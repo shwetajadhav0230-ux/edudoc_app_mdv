@@ -6,17 +6,36 @@ import 'package:provider/provider.dart';
 import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
 import '../../widgets/custom_widgets/summary_row.dart';
-// Note: AppScreen and Product models are assumed to be available via imports/scope
-// from app_state.dart and mock_data.dart
 
 class OfferDetailsScreen extends StatelessWidget {
   const OfferDetailsScreen({super.key});
+
+  // Helper function to handle the "Buy Bundle Now" button action
+  void _handleBuyBundle(
+    BuildContext context,
+    AppState appState,
+    dynamic offer,
+  ) {
+    appState.addBundleToCart(offer);
+
+    // Navigate immediately to the Cart screen
+    appState.navigate(AppScreen.cart);
+
+    // Optional: Show Snackbar confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${offer.title} added to cart!'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
     final offerId = int.tryParse(appState.selectedOfferId ?? '') ?? 201;
+    // Assuming dummyOffers is accessible
     final offer = dummyOffers.firstWhere(
       (o) => o.id == offerId,
       orElse: () => dummyOffers.first,
@@ -24,6 +43,7 @@ class OfferDetailsScreen extends StatelessWidget {
     // Define backupColor locally for potential coloring (like the free badge)
     final Color backupColor = const Color(0xFF14B8A6);
 
+    // Assuming dummyProducts is accessible
     final bundledProducts = offer.productIds
         .map(
           (id) => dummyProducts.firstWhere(
@@ -75,7 +95,7 @@ class OfferDetailsScreen extends StatelessWidget {
                           ),
                         ),
                         const Divider(),
-                        // ADDED: Detailed Description/Details Section
+                        // Detailed Description/Details Section
                         Text('Description', style: theme.textTheme.titleMedium),
                         const SizedBox(height: 4),
                         Text(
@@ -108,7 +128,12 @@ class OfferDetailsScreen extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: offer.status == 'Active'
-                                ? () => appState.checkout()
+                                ? () =>
+                                      _handleBuyBundle(
+                                        context,
+                                        appState,
+                                        offer,
+                                      ) // FIX: Call new handler
                                 : null,
                             child: Text(
                               offer.tokenPrice == 0

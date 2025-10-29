@@ -3,7 +3,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
-// NOTE: Assuming external data dependencies (dummyProducts, etc.) are available
+// NOTE: Assuming Offer model is available in the scope of AppState
+// import '../models/offer.dart';
 
 enum AppScreen {
   welcome,
@@ -38,9 +39,7 @@ class AppState extends ChangeNotifier {
 
   // --- User/Wallet State ---
   int _walletTokens = 450;
-  // Note: Initial cart is set to empty to avoid dependency errors here.
   final List<Product> _cartItems = [];
-
   final List<int> _bookmarkedProductIds = [1, 6];
   final Map<String, dynamic> _currentUser = {
     'name': 'Jane Doe',
@@ -151,9 +150,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // INTEGRATED FIX: Method to add the Annual Pro Pack
+  // INTEGRATED FIX: Method to add the Annual Pro Pack (Existing from previous fix)
   void addProPackToCart() {
-    // Define a mock 'Product' representing the subscription/pack (ID 999, Price 300)
     final proPack = Product(
       id: 999,
       type: 'Subscription',
@@ -169,12 +167,46 @@ class AppState extends ChangeNotifier {
       reviewCount: 0,
       details: 'The ultimate subscription for full library access.',
       content: 'N/A',
-      imageUrl: '', // Non-nullable field handled
+      imageUrl: '',
     );
-
-    // Check if Pro Pack is already in cart to prevent duplicates
     if (!_cartItems.any((item) => item.id == proPack.id)) {
       _cartItems.add(proPack);
+      notifyListeners();
+    }
+  }
+
+  // NEW METHOD: Adds all products in a specific bundle (Offer) to the cart.
+  void addBundleToCart(dynamic offer) {
+    // Use dynamic or Offer class
+    if (offer.status != 'Active') return;
+
+    // Remove any items that are part of this bundle but might be individually carted
+    _cartItems.removeWhere(
+      (item) => item.id == 999,
+    ); // Remove Pro Pack if adding bundle
+
+    // Create a mock product representing the bundle itself for the cart/summary view
+    final bundleProduct = Product(
+      id: offer.id,
+      type: 'Bundle',
+      title: offer.title,
+      description: 'Bundle discount: ${offer.discount}',
+      price: offer.tokenPrice,
+      isFree: offer.tokenPrice == 0,
+      category: 'Bundle',
+      tags: [],
+      rating: 0.0,
+      author: 'System',
+      pages: offer.productIds.length,
+      reviewCount: 0,
+      details: 'Includes ${offer.productIds.length} documents.',
+      content: 'N/A',
+      imageUrl: '',
+    );
+
+    // Check if the bundle itself is already in the cart
+    if (!_cartItems.any((item) => item.id == bundleProduct.id)) {
+      _cartItems.add(bundleProduct);
       notifyListeners();
     }
   }
