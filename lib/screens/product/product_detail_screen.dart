@@ -61,7 +61,7 @@ class ProductDetailsScreen extends StatelessWidget {
         TextButton.icon(
           onPressed: appState.navigateBack,
           icon: Icon(Icons.arrow_back, color: Colors.white70, size: 22),
-          label: Text('Back to Listings', style: TextStyle(color: Colors.white70)),
+          label: Text('Back', style: TextStyle(color: Colors.white70)),
         ),
         const SizedBox(height: 18),
         // Book Icon Block
