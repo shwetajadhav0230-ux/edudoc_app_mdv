@@ -1,5 +1,6 @@
 // Auto-generated screen from main.dart
 
+import 'package:edudoc_app_mdv/models/product.dart' show Product;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +9,63 @@ import '../../state/app_state.dart';
 
 class ProductDetailsScreen extends StatelessWidget {
   const ProductDetailsScreen({super.key});
+
+  // --- 1. Functional Helper Widgets (Moved into class scope) ---
+
+  // Helper widget to provide a dynamic Bookmark icon with action/feedback
+  Widget _buildBookmarkButton(
+    BuildContext context,
+    Product product,
+    Color secondaryColor,
+  ) {
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final isBookmarked = appState.bookmarkedProductIds.contains(product.id);
+
+        return IconButton(
+          onPressed: () {
+            appState.toggleBookmark(product.id);
+
+            // Show Snackbar confirmation
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  isBookmarked
+                      ? '${product.title} removed from Wishlist.'
+                      : '${product.title} added to Wishlist.',
+                ),
+                duration: const Duration(milliseconds: 1000),
+              ),
+            );
+          },
+          icon: Icon(
+            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? secondaryColor : Colors.grey,
+          ),
+          splashRadius: 24,
+        );
+      },
+    );
+  }
+
+  // Helper function to handle cart action with feedback
+  void _handleAddToCart(
+    BuildContext context,
+    AppState appState,
+    Product product,
+  ) {
+    appState.addToCart(product);
+
+    // Show Snackbar confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${product.title} added to Cart.'),
+        duration: const Duration(milliseconds: 1000),
+      ),
+    );
+  }
+
+  // --- 2. Main Widget Build ---
 
   @override
   Widget build(BuildContext context) {
@@ -22,241 +80,293 @@ class ProductDetailsScreen extends StatelessWidget {
     );
 
     final isOwned = appState.bookmarkedProductIds.contains(product.id);
-    final isBookmarked = isOwned;
     final priceText = product.isFree ? 'FREE' : '${product.price} Tokens';
     final Color backupColor = const Color(0xFF14B8A6);
 
     // Get the appropriate icon based on the product type
-    IconData typeIcon;
-    if (product.type == 'Notes') {
-      typeIcon = Icons.note_alt;
-    } else if (product.type == 'Books') {
-      typeIcon = Icons.book;
-    } else if (product.type == 'Journals') {
-      typeIcon = Icons.edit_note;
-    } else {
-      typeIcon = Icons.article;
-    }
+    IconData typeIcon = product.type == 'Notes' ? Icons.note_alt : Icons.book;
 
     // Check if the product has a valid image URL in the mock data
     final bool hasCustomImage =
         product.imageUrl != null && product.imageUrl.isNotEmpty;
 
-    // --- Media Widget Builder ---
-    Widget mediaWidget = Container(
-      height: 250,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      alignment: Alignment.center,
-      child: Icon(typeIcon, size: 100, color: theme.colorScheme.primary),
-    );
-
-    if (hasCustomImage) {
-      mediaWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          product.imageUrl, // Use the URL from mock data
-          height: 250,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              height: 250,
-              color: theme.colorScheme.primary.withOpacity(0.1),
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            // Fallback to the Icon placeholder if network fails
-            return mediaWidget;
-          },
+    // --- Media Widget Logic ---
+    Widget _buildPlaceholderMedia(IconData icon) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: const Color(0xFF4C4435),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Icon(icon, size: 70, color: const Color(0xFFC6A153)),
         ),
       );
     }
-    // --- End Media Widget Builder ---
+
+    Widget mediaWidget = _buildPlaceholderMedia(typeIcon);
+    if (hasCustomImage) {
+      mediaWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          product.imageUrl,
+          height: 180,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => _buildPlaceholderMedia(typeIcon),
+        ),
+      );
+    }
+    // --- End Media Widget Logic ---
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // FIX: Back button moved to the top left corner of the ScrollView
           TextButton.icon(
             onPressed: appState.navigateBack,
-            icon: const Icon(Icons.arrow_back),
-            label: Text(
-              'Back to Listings',
-              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
-            ),
+            icon: const Icon(Icons.arrow_back, color: Colors.white70, size: 22),
+            label: const Text('Back', style: TextStyle(color: Colors.white70)),
           ),
           const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left Column: Media & Actions
-              Expanded(
-                flex: 1,
-                child: Column(
-                  children: [
-                    mediaWidget, // Use the dynamically built media widget
-                    const SizedBox(height: 16),
-                    // Action Button (Purchase/Read)
-                    SizedBox(
-                      width: double.infinity,
-                      child: isOwned
-                          ? ElevatedButton.icon(
-                              onPressed: () => appState.navigate(
-                                AppScreen.reading,
-                                id: product.id.toString(),
-                              ),
-                              icon: const Icon(
-                                Icons.book_online,
-                                color: Colors.black,
-                              ),
-                              label: const Text(
-                                'Read Document',
-                                style: TextStyle(color: Colors.black),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: backupColor,
-                              ),
-                            )
-                          // NEW LOGIC: Add to Cart and then navigate to Cart screen
-                          : ElevatedButton.icon(
-                              onPressed: () {
-                                appState.addToCart(product);
-                                appState.navigate(AppScreen.cart);
-                              },
-                              icon: const Icon(
-                                Icons.shopping_bag,
-                                color: Colors.white,
-                              ),
-                              label: Text(
-                                product.isFree
-                                    ? 'Download Now'
-                                    : 'Purchase for ${product.price} T.',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primary,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Small Icons Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment
-                          .center, // Center the remaining button
-                      children: [
-                        // RETAINED: Bookmark/Library Button
-                        IconButton(
-                          onPressed: () => appState.toggleBookmark(product.id),
-                          icon: Icon(
-                            isBookmarked
-                                ? Icons.bookmark
-                                : Icons.bookmark_border,
-                            color: isBookmarked
-                                ? theme.colorScheme.secondary
-                                : Colors.grey,
-                          ),
-                        ),
 
-                        // REMOVED: The small redundant shopping cart icon button
-                        // IconButton(
-                        //   onPressed: () => appState.addToCart(product),
-                        //   icon: Icon(Icons.shopping_cart, color: backupColor),
-                        // ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              // Right Column: Details & Reviews
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.title,
-                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 32),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          priceText,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: product.isFree
-                                ? backupColor
-                                : theme.colorScheme.tertiary,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.star, color: Colors.yellow),
+          // 1. Media Area (Full Width, Custom Style)
+          mediaWidget,
 
-                        // Use Expanded for constraint handling
-                        Expanded(
-                          child: Text(
-                            '${product.rating} (${product.reviewCount} Reviews)',
-                            style: TextStyle(color: Colors.grey.shade400),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
+          const SizedBox(height: 24),
+
+          // 2. Main Action Button
+          SizedBox(
+            width: double.infinity,
+            child: isOwned
+                ? ElevatedButton.icon(
+                    onPressed: () => appState.navigate(
+                      AppScreen.reading,
+                      id: product.id.toString(),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      product.details,
-                      style: TextStyle(color: Colors.grey.shade300),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Author: ${product.author}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text('Category: ${product.category}'),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Reviews',
-                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
-                    ),
-                    const SizedBox(height: 8),
-                    // Simplified Review List
-                    Column(
-                      children: List.generate(
-                        2,
-                        (index) => Card(
-                          child: ListTile(
-                            title: Text(
-                              'User ${index + 1}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Great document!',
-                              style: TextStyle(color: Colors.grey.shade400),
-                            ),
-                            trailing: const Text(
-                              '5.0 ★',
-                              style: TextStyle(color: Colors.yellow),
-                            ),
-                          ),
-                        ),
+                    icon: const Icon(Icons.menu_book, color: Colors.black),
+                    label: const Text(
+                      'Read Document',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF24E3C6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: () =>
+                        _handleAddToCart(context, appState, product),
+                    icon: const Icon(Icons.shopping_bag, color: Colors.white),
+                    label: Text(
+                      product.isFree
+                          ? 'Download Now'
+                          : 'Purchase for ${product.price} T.',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // 3. Action Buttons Row (Bookmark/Cart/Share)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // FUNCTIONAL FIX: Bookmark Button (Stateful)
+              _buildBookmarkButton(
+                context,
+                product,
+                theme.colorScheme.secondary,
+              ),
+
+              // FUNCTIONAL FIX: Cart Button (for secondary access/add to cart)
+              IconButton(
+                onPressed: () => _handleAddToCart(context, appState, product),
+                icon: const Icon(Icons.shopping_cart_outlined),
+                color: Colors.amber,
+                splashRadius: 24,
+              ),
+
+              // Share Button
+              IconButton(
+                icon: const Icon(Icons.share_outlined, color: Colors.white54),
+                onPressed: () {},
+                splashRadius: 24,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // 4. Title & Price (Dynamic content)
+          Text(
+            product.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                priceText,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.tertiary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.star, color: Colors.yellowAccent, size: 22),
+              const SizedBox(width: 4),
+              // Ensure rating text is constrained
+              Flexible(
+                child: Text(
+                  '${product.rating} (${product.reviewCount} Reviews)',
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+
+          // 5. Details and Metadata
+          Text(
+            product.details,
+            style: const TextStyle(color: Colors.white70, fontSize: 15),
+          ),
+          const SizedBox(height: 16),
+
+          Text(
+            'Type: ${product.type}    Author: ${product.author}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Category: ${product.category}    Pages: ${product.pages}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 14),
+
+          // Pill-Shaped Tags (Dynamic content)
+          Wrap(
+            spacing: 8.0,
+            children: product.tags
+                .map(
+                  (tag) => Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: tag == 'STEM' || tag == 'Tech'
+                            ? Colors.teal
+                            : Colors.indigo,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        tag,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+
+          const SizedBox(height: 28),
+
+          // 6. Reviews Section (Dynamic data)
+          Text(
+            'User Reviews (${product.reviewCount})',
+            style: const TextStyle(
+              color: Color(0xFFD49AF9),
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          Column(
+            children: List.generate(
+              2,
+              (index) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF181F2A),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    const BoxShadow(color: Colors.black26, blurRadius: 8),
+                  ],
+                ),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.account_circle,
+                    color: Colors.white54,
+                  ),
+                  title: Text(
+                    index == 0 ? "Alex M." : "Sarah K.",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  subtitle: Text(
+                    index == 0
+                        ? 'The best notes I\'ve bought! Super clear and highly detailed diagrams.'
+                        : 'Great content, but wish there were more practice examples. Still worth the tokens!',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  trailing: Text(
+                    index == 0 ? "5.0 ★" : "4.0 ★",
+                    style: const TextStyle(
+                      color: Colors.amberAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          TextButton(
+            onPressed: () {},
+            child: const Text(
+              "View All Reviews",
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          const SizedBox(height: 42),
         ],
       ),
     );

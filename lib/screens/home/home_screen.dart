@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../../data/mock_data.dart';
 import '../../models/product.dart';
 import '../../state/app_state.dart';
-import '../../widgets/custom_widgets/library_shelf_item.dart';
 import '../../widgets/custom_widgets/product_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -18,8 +17,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-    // Define backupColor locally as per the implementation in main.dart
-    final Color backupColor = const Color(0xFF14B8A6);
+    // Define backupColor locally
 
     final filteredProducts = dummyProducts.where((p) {
       if (appState.homeFilter == 'all') return true;
@@ -40,7 +38,6 @@ class HomeScreen extends StatelessWidget {
     final totalPages = (filteredProducts.length / appState.itemsPerPage).ceil();
 
     return SingleChildScrollView(
-      // Keep outer padding here for general content (Title, Offers)
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,6 +50,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // --- Role Switch Card ---
 
           // --- Offers Carousel (Simplified) ---
           GestureDetector(
@@ -80,16 +78,12 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
           // --- My Library Shelf (Horizontal Scroll) ---
           Text(
             'My Library',
             style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
           ),
           const SizedBox(height: 8),
-
-          // Move the ListView.builder OUTSIDE the Padding if you want it full width,
-          // OR, keep it here and fix the horizontal overflow:
           SizedBox(
             height: 140,
             child: appState.bookmarkedProductIds.isEmpty
@@ -100,38 +94,20 @@ class HomeScreen extends StatelessWidget {
                   )
                 : ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    // FIX: Remove padding from the ListView.builder entirely,
-                    // and rely on the horizontal margin of the individual Container
-                    // and the outer SingleChildScrollView's padding to handle alignment.
-                    // Instead, use the logic below:
-                    itemCount: appState.bookmarkedProductIds.length,
+                    itemCount: min(appState.bookmarkedProductIds.length, 6),
                     itemBuilder: (context, index) {
-                      Product? product;
-                      try {
-                        product = dummyProducts.firstWhere(
-                          (p) => p.id == appState.bookmarkedProductIds[index],
-                        );
-                      } catch (e) {
-                        return const SizedBox.shrink();
-                      }
-
-                      // FIX: Adjust margin to handle the 16px padding collision
-                      // and prevent horizontal overflow.
+                      final product = dummyProducts.firstWhere(
+                        (p) => p.id == appState.bookmarkedProductIds[index],
+                      );
                       return Container(
                         width: 100,
-                        // Add left margin only for the first item (to align with the 16px padding)
-                        // and a universal right margin for spacing between items.
-                        margin: EdgeInsets.only(
-                          left: index == 0 ? 0 : 12,
-                          right: 12,
-                        ),
-                        child: LibraryShelfItem(product: product),
+                        margin: const EdgeInsets.only(right: 12),
+                        child: ProductCard(product: product),
                       );
                     },
                   ),
           ),
           const SizedBox(height: 16),
-
           // --- Filters ---
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -149,9 +125,9 @@ class HomeScreen extends StatelessWidget {
                                 : theme.textTheme.bodyMedium?.color,
                           ),
                         ),
-                        // FIXED: Ensure MaterialStateProperty is used
-                        color: MaterialStateProperty.resolveWith<Color>((
-                          Set<MaterialState> states,
+                        // Used MaterialStateProperty to set color on chips
+                        color: WidgetStateProperty.resolveWith<Color>((
+                          Set<WidgetState> states,
                         ) {
                           if (appState.homeFilter == filter) {
                             return theme.colorScheme.primary;

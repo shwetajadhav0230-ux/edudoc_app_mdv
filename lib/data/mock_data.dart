@@ -20,7 +20,9 @@ final List<Product> dummyProducts = [
     author: 'Dr. Emily Carter',
     pages: 45,
     reviewCount: 88,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl:
+        'https://picsum.photos/seed/calculus/300/200', // Changed seed slightly for variety
     details:
         'In-depth guide to Calculus I, focusing on integration techniques and fundamental theorem applications.',
     content:
@@ -29,7 +31,6 @@ final List<Product> dummyProducts = [
         'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 2,
     type: 'Books',
     title: 'Historical Atlas: WW2',
@@ -42,6 +43,7 @@ final List<Product> dummyProducts = [
     author: 'Prof. David Lee',
     pages: 300,
     reviewCount: 42,
+    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'Rich, multimedia-ready eBook detailing the major events, political dynamics, and geographical shifts of World War II.',
@@ -50,7 +52,6 @@ final List<Product> dummyProducts = [
     pdfUrl: null,
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 3,
     type: 'Journals',
     title: 'Daily Gratitude Prompts',
@@ -63,14 +64,14 @@ final List<Product> dummyProducts = [
     author: 'Wellness Hub',
     pages: 30,
     reviewCount: 150,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl: 'https://picsum.photos/seed/wellness/300/200',
     details:
         'Guided prompts designed to improve mental clarity, reduce stress, and foster a positive mindset.',
     content:
         '## Day 1: Grounding\n**Morning Prompt**: List three sensory details you notice right now. **Evening Reflection**: What is one small success you achieved today?',
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 4,
     type: 'Notes',
     title: 'React Hooks Deep Dive',
@@ -84,14 +85,14 @@ final List<Product> dummyProducts = [
     author: 'Code Master',
     pages: 62,
     reviewCount: 71,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl: 'https://picsum.photos/seed/react/300/200',
     details:
         'For developers who already know React basics. Covers useState, useEffect, useMemo, useCallback, and creating reusable custom hooks for enterprise applications.',
     content:
         '## Custom Hooks\nCustom hooks are reusable functions for sharing stateful logic. Example: `useToggle` manages boolean state.',
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 5,
     type: 'Notes',
     title: 'Intro to Microeconomics',
@@ -105,14 +106,14 @@ final List<Product> dummyProducts = [
     author: 'The Econ Tutor',
     pages: 35,
     reviewCount: 20,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl: 'https://picsum.photos/seed/econ/300/200',
     details:
         'A clearly articulated introduction to core Microeconomics principles. Designed to supplement introductory college lectures.',
     content:
         r'## The Law of Demand\nAs the price of a good or service increases, the quantity demanded decreases ($P \uparrow \implies Q_d \downarrow$). This inverse relationship is fundamental.',
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 6,
     type: 'Books',
     title: 'The Art of Minimalist Design',
@@ -125,14 +126,14 @@ final List<Product> dummyProducts = [
     author: 'Clara Vane',
     pages: 200,
     reviewCount: 105,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl: 'https://picsum.photos/seed/design/300/200',
     details:
         'An inspiring book exploring how less can be more in digital and physical design. Features interviews with leading designers and practical tips.',
     content:
         '## Principle 3: Intentional White Space\nWhite space (or negative space) is not merely empty area; it is a critical design element that enhances readability and visual hierarchy.',
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 7,
     type: 'Notes',
     title: 'Data Structures & Algorithms',
@@ -146,14 +147,14 @@ final List<Product> dummyProducts = [
     author: 'Code Master',
     pages: 75,
     reviewCount: 55,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl: 'https://picsum.photos/seed/algo/300/200',
     details:
         'A rigorous set of notes focused on preparing for technical interviews. Includes complexity analysis and common interview questions.',
     content:
         '## Binary Search Trees (BST)\nA node-based binary tree data structure where the left subtree has keys < parent key and the right subtree has keys > parent key.',
   ),
   Product(
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 8,
     type: 'Notes',
     title: 'The Solar System Explained',
@@ -167,7 +168,8 @@ final List<Product> dummyProducts = [
     author: 'AstroKid',
     pages: 20,
     reviewCount: 95,
-    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
+    // CLEANED: Only one instance of imageUrl is used
+    imageUrl: 'https://picsum.photos/seed/space/300/200',
     details:
         'A fun and fact-filled summary of our solar system, perfect for middle school students or anyone interested in astronomy.',
     content:
