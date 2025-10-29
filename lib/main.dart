@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'state/app_state.dart';
 import 'widgets/common_widgets.dart'; // Assuming MainScreenRouter is in here
 
@@ -61,8 +60,8 @@ class EduDocApp extends StatelessWidget {
         type: BottomNavigationBarType.fixed, // Ensures all labels are shown
         showUnselectedLabels: true,
       ),
-
       // --- END FIX ---
+
       useMaterial3: true,
     );
 
@@ -98,15 +97,13 @@ class EduDocApp extends StatelessWidget {
       // --- FIX FOR BOTTOM NAV (LIGHT) ---
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: const Color(0xFFFFFFFF), // A clean white background
-        selectedItemColor: const Color(
-          0xFF4F46E5,
-        ), // Use the light primary color
+        selectedItemColor: const Color(0xFF4F46E5), // Use the light primary color
         unselectedItemColor: Colors.grey.shade700, // A visible dark grey
         type: BottomNavigationBarType.fixed, // Ensures all labels are shown
         showUnselectedLabels: true,
       ),
-
       // --- END FIX ---
+
       useMaterial3: true,
     );
 
