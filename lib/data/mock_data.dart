@@ -29,6 +29,7 @@ final List<Product> dummyProducts = [
 
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 2,
     type: 'Books',
     title: 'Historical Atlas: WW2',
@@ -48,6 +49,7 @@ final List<Product> dummyProducts = [
     pdfUrl: null,
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 3,
     type: 'Journals',
     title: 'Daily Gratitude Prompts',
@@ -66,6 +68,7 @@ final List<Product> dummyProducts = [
         '## Day 1: Grounding\n**Morning Prompt**: List three sensory details you notice right now. **Evening Reflection**: What is one small success you achieved today?',
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 4,
     type: 'Notes',
     title: 'React Hooks Deep Dive',
@@ -85,6 +88,7 @@ final List<Product> dummyProducts = [
         '## Custom Hooks\nCustom hooks are reusable functions for sharing stateful logic. Example: `useToggle` manages boolean state.',
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 5,
     type: 'Notes',
     title: 'Intro to Microeconomics',
@@ -104,6 +108,7 @@ final List<Product> dummyProducts = [
         r'## The Law of Demand\nAs the price of a good or service increases, the quantity demanded decreases ($P \uparrow \implies Q_d \downarrow$). This inverse relationship is fundamental.',
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 6,
     type: 'Books',
     title: 'The Art of Minimalist Design',
@@ -122,6 +127,7 @@ final List<Product> dummyProducts = [
         '## Principle 3: Intentional White Space\nWhite space (or negative space) is not merely empty area; it is a critical design element that enhances readability and visual hierarchy.',
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 7,
     type: 'Notes',
     title: 'Data Structures & Algorithms',
@@ -141,11 +147,12 @@ final List<Product> dummyProducts = [
         '## Binary Search Trees (BST)\nA node-based binary tree data structure where the left subtree has keys < parent key and the right subtree has keys > parent key.',
   ),
   Product(
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     id: 8,
     type: 'Notes',
     title: 'The Solar System Explained',
     description:
-        'Notes on planetary science, basic astrophyics, and space exploration.',
+        'Notes on planetary science, basic astrophysics, and space exploration.',
     price: 0,
     isFree: true,
     category: 'Science',

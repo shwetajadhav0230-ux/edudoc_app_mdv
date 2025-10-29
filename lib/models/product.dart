@@ -16,8 +16,7 @@ class Product {
   final String details;
   final String content;
   final String? pdfUrl;
-
-  var imageUrl;
+  final String imageUrl;
 
   Product({
     required this.id,
@@ -34,7 +33,7 @@ class Product {
     required this.reviewCount,
     required this.details,
     required this.content,
-    this.pdfUrl, 
-    this.imageUrl,
+    this.pdfUrl,
+    required this.imageUrl,
   });
 }
