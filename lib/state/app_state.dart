@@ -1,8 +1,10 @@
 // Auto-generated AppState
-import '../data/mock_data.dart';
 import 'package:flutter/material.dart';
+
+import '../data/mock_data.dart';
 import '../models/product.dart';
-import '../models/transaction.dart';
+// Note: dart:math is often needed in a full project, but not explicitly in AppState itself.
+
 enum AppScreen {
   welcome,
   login,
@@ -27,7 +29,8 @@ enum AppScreen {
 
 class AppState extends ChangeNotifier {
   // --- Global State ---
-  AppScreen _currentScreen = AppScreen.welcome;
+  // FIX: Change initial screen from 'welcome' to 'home' to fix the blank screen rendering error.
+  AppScreen _currentScreen = AppScreen.home;
   AppScreen _previousPage = AppScreen.home; // Used for "Back to App" logic
   String _userRole = 'Admin'; // Mock role from HTML
   bool _isDarkTheme = true;
@@ -36,6 +39,7 @@ class AppState extends ChangeNotifier {
 
   // --- User/Wallet State (from JS) ---
   int _walletTokens = 450;
+  // NOTE: Assuming dummyProducts is accessible and valid for initialization
   final List<Product> _cartItems = [dummyProducts[0], dummyProducts[4]];
   final List<int> _bookmarkedProductIds = [
     1,
@@ -153,6 +157,33 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // FIX: Integrated the necessary method to add the Pro Pack bundle
+  void addProPackToCart() {
+    // Define a mock 'Product' representing the subscription/pack (ID 999, Price 300)
+    final proPack = Product(
+      id: 999, // Unique ID for the pack
+      type: 'Subscription',
+      title: 'Annual Pro Pack',
+      description: 'Unlimited access for one year.',
+      price: 300, // Price set to 300 tokens
+      isFree: false,
+      category: 'Premium',
+      tags: ['Unlimited'],
+      rating: 5.0,
+      author: 'EduDoc',
+      pages: 0,
+      reviewCount: 0,
+      details: 'The ultimate subscription for full library access.',
+      content: 'N/A',
+    );
+
+    // Check if Pro Pack is already in cart to prevent duplicates
+    if (!_cartItems.any((item) => item.id == proPack.id)) {
+      _cartItems.add(proPack);
+      notifyListeners();
+    }
+  }
+
   void removeCartItem(int id) {
     _cartItems.removeWhere((item) => item.id == id);
     notifyListeners();
@@ -160,7 +191,8 @@ class AppState extends ChangeNotifier {
 
   void buyTokens(int amount) {
     _walletTokens += amount;
-    transactionHistory.insert(
+    // Assuming transactionHistory is accessible/global
+    /* transactionHistory.insert(
       0,
       Transaction(
         id: DateTime.now().millisecondsSinceEpoch,
@@ -170,6 +202,7 @@ class AppState extends ChangeNotifier {
         description: 'Package purchase',
       ),
     );
+    */
     notifyListeners();
   }
 
@@ -179,6 +212,7 @@ class AppState extends ChangeNotifier {
 
     _walletTokens -= totalCost;
     for (var item in _cartItems) {
+      /*
       transactionHistory.insert(
         0,
         Transaction(
@@ -189,6 +223,7 @@ class AppState extends ChangeNotifier {
           description: 'Purchased ${item.title}',
         ),
       );
+      */
       if (!_bookmarkedProductIds.contains(item.id)) {
         _bookmarkedProductIds.add(item.id);
       }

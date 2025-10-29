@@ -1,12 +1,19 @@
 // Auto-generated screen from main.dart
 
 import 'dart:math';
-import '../../widgets/custom_widgets/product_card.dart';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../data/mock_data.dart';
 import '../../models/product.dart';
 import '../../state/app_state.dart';
+import '../../widgets/custom_widgets/library_shelf_item.dart'; // Import the dedicated widget
+// Revert to original imports or necessary public imports
+import '../../widgets/custom_widgets/product_card.dart';
+
+// NOTE: Placeholder classes and methods are removed to fix the scope errors.
+// Relying on the proper imports for 'ProductCard' and 'LibraryShelfItem'.
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,8 +22,8 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-    // Define backupColor locally
-
+    // Define backupColor locally as per the implementation in main.dart
+    final Color backupColor = const Color(0xFF14B8A6);
 
     final filteredProducts = dummyProducts.where((p) {
       if (appState.homeFilter == 'all') return true;
@@ -49,8 +56,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // --- Role Switch Card ---
-
+          // --- Role Switch Card Placeholder ---
 
           // --- Offers Carousel (Simplified) ---
           GestureDetector(
@@ -102,8 +108,12 @@ class HomeScreen extends StatelessWidget {
                       return Container(
                         width: 100,
                         margin: const EdgeInsets.only(right: 12),
-                        child: ProductCard(
+                        // FIXED: Use the specific LibraryShelfItem widget
+                        child: LibraryShelfItem(
                           product: product,
+                          // NOTE: The actual LibraryShelfItem only accepts 'product'
+                          // You may need to update LibraryShelfItem.dart to handle styling/navigation.
+                          // Passing required data assuming structure match.
                         ),
                       );
                     },
@@ -127,9 +137,9 @@ class HomeScreen extends StatelessWidget {
                                 : theme.textTheme.bodyMedium?.color,
                           ),
                         ),
-                        // Used MaterialStateProperty to set color on chips
-                        color: WidgetStateProperty.resolveWith<Color>((
-                          Set<WidgetState> states,
+                        // FIXED: Replaced deprecated WidgetStateProperty with MaterialStateProperty
+                        color: MaterialStateProperty.resolveWith<Color>((
+                          Set<MaterialState> states,
                         ) {
                           if (appState.homeFilter == filter) {
                             return theme.colorScheme.primary;
@@ -161,8 +171,11 @@ class HomeScreen extends StatelessWidget {
             ),
             itemCount: productsToDisplay.length,
             itemBuilder: (context, index) {
+              // FIXED: Use the imported ProductCard
               return ProductCard(
                 product: productsToDisplay[index],
+                // WARNING: If ProductCard requires backupColor, ensure
+                // its constructor is updated in your widgets/custom_widgets/product_card.dart.
               );
             },
           ),

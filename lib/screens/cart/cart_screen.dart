@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../state/app_state.dart';
 import '../../widgets/custom_widgets/cart_item.dart';
 import '../../widgets/custom_widgets/summary_row.dart';
@@ -15,7 +16,7 @@ class CartScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final totalCost = appState.cartItems.fold(
       0,
-          (sum, item) => sum + item.price,
+      (sum, item) => sum + item.price,
     );
     final canCheckout =
         totalCost <= appState.walletTokens && appState.cartItems.isNotEmpty;
@@ -36,19 +37,18 @@ class CartScreen extends StatelessWidget {
           // This Column lists the cart items. It is INSIDE the main Column.
           appState.cartItems.isEmpty
               ? const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 48.0),
-              child: Text('Your cart is empty.'),
-            ),
-          )
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48.0),
+                    child: Text('Your cart is empty.'),
+                  ),
+                )
               : Column(
-            children: appState.cartItems
-                .map((item) => CartItem(product: item))
-                .toList(),
-          ),
+                  children: appState.cartItems
+                      .map((item) => CartItem(product: item))
+                      .toList(),
+                ),
 
           const SizedBox(height: 24), // Space between items and summary
-
           // --- Summary Card ---
           // This Card is now AFTER the cart items in the main Column
           Card(
@@ -69,15 +69,13 @@ class CartScreen extends StatelessWidget {
                     label: 'Items (${appState.cartItems.length})',
                     value: '$totalCost Tokens',
                   ),
-                  SummaryRow(
-                    label: 'Tax/Fees (Simulated)',
-                    value: '0 Tokens',
-                  ),
+                  SummaryRow(label: 'Tax/Fees (Simulated)', value: '0 Tokens'),
                   const Divider(),
                   SummaryRow(
                     label: 'Total Tokens Required',
                     value: '$totalCost Tokens',
-
+                    isTotal:
+                        true, // FIXED: Added missing flag for total styling
                   ),
                   const SizedBox(height: 16),
 
@@ -104,8 +102,10 @@ class CartScreen extends StatelessWidget {
                     ),
                     child: ElevatedButton.icon(
                       onPressed: canCheckout ? appState.checkout : null,
-                      icon: const Icon(Icons.description, // Icon from image
-                          color: Colors.white),
+                      icon: const Icon(
+                        Icons.description, // Icon from image
+                        color: Colors.white,
+                      ),
                       label: const Text(
                         'Proceed to Checkout',
                         style: TextStyle(
@@ -123,16 +123,18 @@ class CartScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // --- End Button ---
 
+                  // --- End Button ---
                   if (!canCheckout && appState.cartItems.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Center(
                         child: Text(
                           'Insufficient tokens.',
-                          style:
-                          TextStyle(color: Colors.red.shade400, fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.red.shade400,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
