@@ -2,10 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../screens/auth/lock_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/permissions_screen.dart';
 import '../screens/auth/signup_screen.dart';
+import '../screens/auth/welcome_screen.dart';
 import '../screens/cart/cart_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/library/bookmarks_screen.dart';
@@ -20,10 +22,29 @@ import '../screens/profile/settings_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../state/app_state.dart';
-import '../screens/auth/welcome_screen.dart';
-import 'custom_widgets/wallet_button.dart';
-import 'custom_widgets/profile_avatar.dart';
+// import 'custom_widgets/profile_avatar.dart'; // REMOVED: Dependency on broken ProfileAvatar
 import 'custom_widgets/bottom_nav.dart';
+import 'custom_widgets/wallet_button.dart';
+
+// --- Safe Placeholder for Profile Avatar (Internal Fix) ---
+class _SafeProfileAvatar extends StatelessWidget {
+  final VoidCallback onTap;
+  const _SafeProfileAvatar({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: CircleAvatar(
+        radius: 20,
+        backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+        // FIX: Use Icons.person instead of trying to load a missing asset
+        child: const Icon(Icons.person, color: Colors.white),
+      ),
+    );
+  }
+}
+// --- End Safe Placeholder ---
 
 class MainAppScaffold extends StatelessWidget {
   final Widget child;
@@ -67,7 +88,9 @@ class MainAppScaffold extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
+                    WalletButton(
+                      onTap: () => appState.navigate(AppScreen.wallet),
+                    ),
                     const SizedBox(width: 16),
                     IconButton(
                       icon: const Icon(Icons.search),
@@ -75,7 +98,10 @@ class MainAppScaffold extends StatelessWidget {
                       color: Colors.grey.shade400,
                     ),
                     const SizedBox(width: 8),
-                    ProfileAvatar(onTap: () => appState.navigate(AppScreen.profile)),
+                    // FIX: Use the safe, internal avatar widget instead of the external one
+                    _SafeProfileAvatar(
+                      onTap: () => appState.navigate(AppScreen.profile),
+                    ),
                   ],
                 ),
               ],
@@ -85,49 +111,49 @@ class MainAppScaffold extends StatelessWidget {
       ),
       body: child,
       bottomNavigationBar: Builder(
-          builder: (context) {
-            int currentIndex = 0;
-            switch (appState.currentScreen) {
-              case AppScreen.home:
-                currentIndex = 0;
-                break;
-              case AppScreen.library:
-              case AppScreen.bookmarks:
-                currentIndex = 1;
-                break;
-              case AppScreen.cart:
-                currentIndex = 2;
-                break;
-              case AppScreen.profile:
-              case AppScreen.wallet:
-              case AppScreen.userActivity:
-              case AppScreen.settings:
-                currentIndex = 3;
-                break;
-              default:
-                currentIndex = 0;
-            }
-
-            return BottomNav(
-              currentIndex: currentIndex,
-              onTap: (index) {
-                switch (index) {
-                  case 0:
-                    appState.navigate(AppScreen.home);
-                    break;
-                  case 1:
-                    appState.navigate(AppScreen.library);
-                    break;
-                  case 2:
-                    appState.navigate(AppScreen.cart);
-                    break;
-                  case 3:
-                    appState.navigate(AppScreen.profile);
-                    break;
-                }
-              },
-            );
+        builder: (context) {
+          int currentIndex = 0;
+          switch (appState.currentScreen) {
+            case AppScreen.home:
+              currentIndex = 0;
+              break;
+            case AppScreen.library:
+            case AppScreen.bookmarks:
+              currentIndex = 1;
+              break;
+            case AppScreen.cart:
+              currentIndex = 2;
+              break;
+            case AppScreen.profile:
+            case AppScreen.wallet:
+            case AppScreen.userActivity:
+            case AppScreen.settings:
+              currentIndex = 3;
+              break;
+            default:
+              currentIndex = 0;
           }
+
+          return BottomNav(
+            currentIndex: currentIndex,
+            onTap: (index) {
+              switch (index) {
+                case 0:
+                  appState.navigate(AppScreen.home);
+                  break;
+                case 1:
+                  appState.navigate(AppScreen.library);
+                  break;
+                case 2:
+                  appState.navigate(AppScreen.cart);
+                  break;
+                case 3:
+                  appState.navigate(AppScreen.profile);
+                  break;
+              }
+            },
+          );
+        },
       ),
     );
   }
@@ -172,7 +198,6 @@ class MainScreenRouter extends StatelessWidget {
 
     return showScaffold
         ? MainAppScaffold(backupColor: backupColor, child: currentView)
-
         : currentView;
   }
 
@@ -295,4 +320,3 @@ class BuyTokensModal extends StatelessWidget {
     );
   }
 }
-

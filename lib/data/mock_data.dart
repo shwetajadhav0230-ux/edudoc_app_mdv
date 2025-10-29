@@ -1,8 +1,9 @@
 // Auto-generated mock data from main.dart
 
-import '../models/product.dart';
 import '../models/offer.dart';
+import '../models/product.dart';
 import '../models/transaction.dart';
+
 final List<Product> dummyProducts = [
   // FIX: Converted content string to RAW String literal (r'...') to properly handle LaTeX characters ($ and \).
   Product(
@@ -26,7 +27,6 @@ final List<Product> dummyProducts = [
         r'## Chapter 1: The Antiderivative\nFormula: $\int f(x) dx = F(x) + C$. The Fundamental Theorem is $\int_{a}^{b} f(x) dx = F(b) - F(a)$.\n\n## Chapter 2: Substitution\nEffective integration uses substitution (u-substitution) to simplify functions. **Rule**: Always check your differentials.',
     pdfUrl:
         'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-
   ),
   Product(
     id: 2,
@@ -41,6 +41,7 @@ final List<Product> dummyProducts = [
     author: 'Prof. David Lee',
     pages: 300,
     reviewCount: 42,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'Rich, multimedia-ready eBook detailing the major events, political dynamics, and geographical shifts of World War II.',
     content:
@@ -60,6 +61,7 @@ final List<Product> dummyProducts = [
     author: 'Wellness Hub',
     pages: 30,
     reviewCount: 150,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'Guided prompts designed to improve mental clarity, reduce stress, and foster a positive mindset.',
     content:
@@ -79,6 +81,7 @@ final List<Product> dummyProducts = [
     author: 'Code Master',
     pages: 62,
     reviewCount: 71,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'For developers who already know React basics. Covers useState, useEffect, useMemo, useCallback, and creating reusable custom hooks for enterprise applications.',
     content:
@@ -98,6 +101,7 @@ final List<Product> dummyProducts = [
     author: 'The Econ Tutor',
     pages: 35,
     reviewCount: 20,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'A clearly articulated introduction to core Microeconomics principles. Designed to supplement introductory college lectures.',
     content:
@@ -116,6 +120,7 @@ final List<Product> dummyProducts = [
     author: 'Clara Vane',
     pages: 200,
     reviewCount: 105,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'An inspiring book exploring how less can be more in digital and physical design. Features interviews with leading designers and practical tips.',
     content:
@@ -135,6 +140,7 @@ final List<Product> dummyProducts = [
     author: 'Code Master',
     pages: 75,
     reviewCount: 55,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'A rigorous set of notes focused on preparing for technical interviews. Includes complexity analysis and common interview questions.',
     content:
@@ -154,6 +160,7 @@ final List<Product> dummyProducts = [
     author: 'AstroKid',
     pages: 20,
     reviewCount: 95,
+    imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'A fun and fact-filled summary of our solar system, perfect for middle school students or anyone interested in astronomy.',
     content:

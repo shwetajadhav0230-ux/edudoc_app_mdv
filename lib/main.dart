@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'state/app_state.dart';
-import 'widgets/common_widgets.dart';
+import 'widgets/common_widgets.dart'; // Assuming MainScreenRouter is in here
 
 void main() {
   runApp(
@@ -26,16 +26,17 @@ class EduDocApp extends StatelessWidget {
     const primaryColor = Color(0xFF6366F1); // Indigo 500
     const secondaryColor = Color(0xFFF472B6); // Pink 400
     const tertiaryColor = Color(0xFFFBBF24); // Amber 400
-    // FIX: backupColor is defined here as a local constant
     const backupColor = Color(0xFF14B8A6); // Teal 500
 
+    // --- Dark Theme Definition ---
     final ThemeData darkTheme = ThemeData(
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
         primary: primaryColor,
         secondary: secondaryColor,
         tertiary: tertiaryColor,
-        surface: Color(0xFF1E293B), // Scaffold background
+        surface: Color(0xFF1E293B), // Card/Dialog backgrounds
+        background: Color(0xFF0F172A), // Scaffold background
       ),
       scaffoldBackgroundColor: const Color(0xFF0F172A),
       cardColor: const Color(0xFF1E293B),
@@ -51,16 +52,29 @@ class EduDocApp extends StatelessWidget {
         ),
         bodyMedium: TextStyle(fontFamily: 'Inter'),
       ),
+
+      // --- FIX FOR BOTTOM NAV (DARK) ---
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: const Color(0xFF0F172A), // Matches scaffold background
+        selectedItemColor: primaryColor, // Use the main primary color
+        unselectedItemColor: Colors.grey.shade600, // A visible grey
+        type: BottomNavigationBarType.fixed, // Ensures all labels are shown
+        showUnselectedLabels: true,
+      ),
+
+      // --- END FIX ---
       useMaterial3: true,
     );
 
+    // --- Light Theme Definition ---
     final ThemeData lightTheme = ThemeData(
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
         primary: Color(0xFF4F46E5), // Indigo 600
         secondary: Color(0xFFEC4899), // Pink 500
         tertiary: tertiaryColor,
-        surface: Color(0xFFFFFFFF),
+        surface: Color(0xFFFFFFFF), // Card/Dialog backgrounds
+        background: Color(0xFFF9FAFB), // Scaffold background
       ),
       scaffoldBackgroundColor: const Color(0xFFF9FAFB),
       cardColor: const Color(0xFFFFFFFF),
@@ -80,6 +94,19 @@ class EduDocApp extends StatelessWidget {
           color: Color(0xFF111827),
         ),
       ),
+
+      // --- FIX FOR BOTTOM NAV (LIGHT) ---
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: const Color(0xFFFFFFFF), // A clean white background
+        selectedItemColor: const Color(
+          0xFF4F46E5,
+        ), // Use the light primary color
+        unselectedItemColor: Colors.grey.shade700, // A visible dark grey
+        type: BottomNavigationBarType.fixed, // Ensures all labels are shown
+        showUnselectedLabels: true,
+      ),
+
+      // --- END FIX ---
       useMaterial3: true,
     );
 
@@ -87,6 +114,7 @@ class EduDocApp extends StatelessWidget {
       title: 'EduDoc Flutter SPA',
       debugShowCheckedModeBanner: false,
       theme: appState.isDarkTheme ? darkTheme : lightTheme,
+      // The backupColor pass-through is unchanged
       home: const MainScreenRouter(backupColor: backupColor),
     );
   }

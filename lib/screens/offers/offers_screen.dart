@@ -7,106 +7,14 @@ import '../../data/mock_data.dart';
 import '../../models/offer.dart';
 import '../../state/app_state.dart';
 
-// =================================================================
-// 1. HELPER WIDGET (_OfferCard)
-// =================================================================
-
-class _OfferCard extends StatelessWidget {
-  final Offer offer;
-
-  const _OfferCard({super.key, required this.offer});
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context, listen: false);
-    final theme = Theme.of(context);
-
-    final priceDisplay = offer.tokenPrice == 0
-        ? 'FREE'
-        : '${offer.tokenPrice} T.';
-
-    return Card(
-      color: theme.cardColor,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () =>
-            appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Top Section (Title, Duration, Discount)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    offer.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    offer.duration,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 4),
-                  // Display Discount Chip
-                  Chip(
-                    label: Text(
-                      offer.discount,
-                      style: const TextStyle(fontSize: 10, color: Colors.white),
-                    ),
-                    backgroundColor: theme.colorScheme.secondary,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 0,
-                    ),
-                  ),
-                ],
-              ),
-
-              // Bottom Section (Price)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(height: 16),
-                  Text(
-                    priceDisplay,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.tertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =================================================================
-// 2. OFFERS SCREEN
-// =================================================================
-
 class OffersScreen extends StatelessWidget {
   const OffersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
+    final _ = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
-    // Assuming dummyOffers is available globally or imported via '../../data/mock_data.dart'
     final activeOffers = dummyOffers
         .where((o) => o.status == 'Active')
         .toList();
@@ -151,12 +59,7 @@ class OffersScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  // FIX: Call the new logic to add the pack, then navigate to the cart screen
-                  onPressed: () {
-                    // This method needs to be implemented in AppState
-                    appState.addProPackToCart();
-                    appState.navigate(AppScreen.cart);
-                  },
+                  onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                   ),
@@ -187,11 +90,73 @@ class OffersScreen extends StatelessWidget {
             itemCount: activeOffers.length,
             itemBuilder: (context, index) {
               final offer = activeOffers[index];
-              // Using the locally defined helper widget
               return _OfferCard(offer: offer);
             },
           ),
         ],
+      ),
+    );
+  }
+}
+// --- Add this entire class ---
+
+class _OfferCard extends StatelessWidget {
+  final Offer offer;
+
+  const _OfferCard({required this.offer});
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final theme = Theme.of(context);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () =>
+            appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Placeholder for an image
+            Container(
+              height: 80,
+              color: theme.colorScheme.primaryContainer,
+              child: Center(
+                child: Icon(
+                  Icons.collections_bookmark,
+                  color: theme.colorScheme.primary,
+                  size: 40,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                offer.title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Spacer(), // Pushes price to the bottom
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 4.0,
+              ),
+              child: Text(
+                offer.tokenPrice == 0 ? 'FREE' : '${offer.tokenPrice} Tokens',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.tertiary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

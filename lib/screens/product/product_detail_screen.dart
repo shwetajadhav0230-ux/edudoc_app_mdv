@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
-
 
 class ProductDetailsScreen extends StatelessWidget {
   const ProductDetailsScreen({super.key});
@@ -22,21 +22,75 @@ class ProductDetailsScreen extends StatelessWidget {
     );
 
     final isOwned = appState.bookmarkedProductIds.contains(product.id);
-    final isBookmarked =
-        isOwned; // For the prototype, owned means bookmarked/in library
+    final isBookmarked = isOwned;
     final priceText = product.isFree ? 'FREE' : '${product.price} Tokens';
-    // Define backupColor locally
     final Color backupColor = const Color(0xFF14B8A6);
+
+    // Get the appropriate icon based on the product type
+    IconData typeIcon;
+    if (product.type == 'Notes') {
+      typeIcon = Icons.note_alt;
+    } else if (product.type == 'Books') {
+      typeIcon = Icons.book;
+    } else if (product.type == 'Journals') {
+      typeIcon = Icons.edit_note;
+    } else {
+      typeIcon = Icons.article;
+    }
+
+    // Check if the product has a valid image URL in the mock data
+    final bool hasCustomImage =
+        product.imageUrl != null && product.imageUrl.isNotEmpty;
+
+    // --- Media Widget Builder ---
+    Widget mediaWidget = Container(
+      height: 250,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: Icon(typeIcon, size: 100, color: theme.colorScheme.primary),
+    );
+
+    if (hasCustomImage) {
+      mediaWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          product.imageUrl, // Use the URL from mock data
+          height: 250,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              height: 250,
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return mediaWidget;
+          },
+        ),
+      );
+    }
+    // --- End Media Widget Builder ---
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // FIX: Reverting to the original functional TextButton structure
+          // (not wrapped in Align, using proper text color)
           TextButton.icon(
-            onPressed: appState.navigateBack,
+            onPressed: appState.navigateBack, // Back navigation logic
             icon: const Icon(Icons.arrow_back),
-            label: const Text('Back '),
+            label: Text(
+              'Back',
+              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -47,19 +101,7 @@ class ProductDetailsScreen extends StatelessWidget {
                 flex: 1,
                 child: Column(
                   children: [
-                    Container(
-                      height: 250,
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.book,
-                        size: 80,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    mediaWidget, // Use the dynamically built media widget
                     const SizedBox(height: 16),
                     // Action Button
                     SizedBox(
@@ -149,9 +191,15 @@ class ProductDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 16),
                         const Icon(Icons.star, color: Colors.yellow),
-                        Text(
-                          '${product.rating} (${product.reviewCount} Reviews)',
-                          style: TextStyle(color: Colors.grey.shade400),
+
+                        // FIX: Ensure rating text is wrapped in Expanded to prevent horizontal overflow
+                        Expanded(
+                          child: Text(
+                            '${product.rating} (${product.reviewCount} Reviews)',
+                            style: TextStyle(color: Colors.grey.shade400),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ],
                     ),
