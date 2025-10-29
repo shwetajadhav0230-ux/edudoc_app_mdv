@@ -70,6 +70,7 @@ class ProductDetailsScreen extends StatelessWidget {
             );
           },
           errorBuilder: (context, error, stackTrace) {
+            // Fallback to the Icon placeholder if network fails
             return mediaWidget;
           },
         ),
@@ -82,13 +83,11 @@ class ProductDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // FIX: Reverting to the original functional TextButton structure
-          // (not wrapped in Align, using proper text color)
           TextButton.icon(
-            onPressed: appState.navigateBack, // Back navigation logic
+            onPressed: appState.navigateBack,
             icon: const Icon(Icons.arrow_back),
             label: Text(
-              'Back',
+              'Back to Listings',
               style: TextStyle(color: theme.textTheme.bodyMedium?.color),
             ),
           ),
@@ -103,7 +102,7 @@ class ProductDetailsScreen extends StatelessWidget {
                   children: [
                     mediaWidget, // Use the dynamically built media widget
                     const SizedBox(height: 16),
-                    // Action Button
+                    // Action Button (Purchase/Read)
                     SizedBox(
                       width: double.infinity,
                       child: isOwned
@@ -124,8 +123,12 @@ class ProductDetailsScreen extends StatelessWidget {
                                 backgroundColor: backupColor,
                               ),
                             )
+                          // NEW LOGIC: Add to Cart and then navigate to Cart screen
                           : ElevatedButton.icon(
-                              onPressed: () => appState.addToCart(product),
+                              onPressed: () {
+                                appState.addToCart(product);
+                                appState.navigate(AppScreen.cart);
+                              },
                               icon: const Icon(
                                 Icons.shopping_bag,
                                 color: Colors.white,
@@ -142,9 +145,12 @@ class ProductDetailsScreen extends StatelessWidget {
                             ),
                     ),
                     const SizedBox(height: 16),
+                    // Small Icons Row
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment
+                          .center, // Center the remaining button
                       children: [
+                        // RETAINED: Bookmark/Library Button
                         IconButton(
                           onPressed: () => appState.toggleBookmark(product.id),
                           icon: Icon(
@@ -156,10 +162,12 @@ class ProductDetailsScreen extends StatelessWidget {
                                 : Colors.grey,
                           ),
                         ),
-                        IconButton(
-                          onPressed: () => appState.addToCart(product),
-                          icon: Icon(Icons.shopping_cart, color: backupColor),
-                        ),
+
+                        // REMOVED: The small redundant shopping cart icon button
+                        // IconButton(
+                        //   onPressed: () => appState.addToCart(product),
+                        //   icon: Icon(Icons.shopping_cart, color: backupColor),
+                        // ),
                       ],
                     ),
                   ],
@@ -192,7 +200,7 @@ class ProductDetailsScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         const Icon(Icons.star, color: Colors.yellow),
 
-                        // FIX: Ensure rating text is wrapped in Expanded to prevent horizontal overflow
+                        // Use Expanded for constraint handling
                         Expanded(
                           child: Text(
                             '${product.rating} (${product.reviewCount} Reviews)',
