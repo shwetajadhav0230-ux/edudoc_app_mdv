@@ -1,9 +1,9 @@
 // Auto-generated AppState
+
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
-// Note: You may need to ensure 'transaction.dart' and 'offer.dart' are correctly imported
-// if they are used elsewhere in this AppState class (e.g., in checkout or buyTokens).
+// NOTE: Assuming external data dependencies (dummyProducts, etc.) are available
 
 enum AppScreen {
   welcome,
@@ -29,27 +29,19 @@ enum AppScreen {
 
 class AppState extends ChangeNotifier {
   // --- Global State ---
-  // FIX APPLIED: Initial screen set to 'home' for stability
   AppScreen _currentScreen = AppScreen.home;
-  AppScreen _previousPage = AppScreen.home; // Used for "Back to App" logic
-  String _userRole = 'Admin'; // Mock role from HTML
+  AppScreen _previousPage = AppScreen.home;
+  String _userRole = 'Admin';
   bool _isDarkTheme = true;
   String? _selectedProductId;
   String? _selectedOfferId;
 
-  // --- User/Wallet State (from JS) ---
+  // --- User/Wallet State ---
   int _walletTokens = 450;
-  // NOTE: Assuming dummyProducts is accessible and valid for initialization
+  // Note: Initial cart is set to empty to avoid dependency errors here.
   final List<Product> _cartItems = [];
 
-  // To avoid runtime errors on initialization, I am initializing the cart as empty.
-  // In a complete project, ensure dummyProducts is accessible here:
-  // final List<Product> _cartItems = [dummyProducts[0], dummyProducts[4]];
-
-  final List<int> _bookmarkedProductIds = [
-    1,
-    6,
-  ]; // Simulates owned/bookmarked items
+  final List<int> _bookmarkedProductIds = [1, 6];
   final Map<String, dynamic> _currentUser = {
     'name': 'Jane Doe',
     'email': 'jane.doe@edudoc.com',
@@ -95,10 +87,8 @@ class AppState extends ChangeNotifier {
       navigate(_previousPage);
     } else if (_currentScreen == AppScreen.productDetails ||
         _currentScreen == AppScreen.offerDetails) {
-      // Logic for moving back to the previous listing page
       navigate(_previousPage);
     } else {
-      // Default to home page if history is complex
       navigate(AppScreen.home);
     }
   }
@@ -113,7 +103,7 @@ class AppState extends ChangeNotifier {
     _userRole = _userRole == 'Admin' ? 'User' : 'Admin';
     if (_currentScreen == AppScreen.adminDashboard ||
         _currentScreen == AppScreen.userActivity) {
-      navigate(AppScreen.home); // Navigate away if on role-specific screen
+      navigate(AppScreen.home);
     }
     notifyListeners();
   }
@@ -131,7 +121,6 @@ class AppState extends ChangeNotifier {
             _pinCode = '';
           });
         } else {
-          // Trigger shake/error visualization
           Future.delayed(const Duration(seconds: 1), () {
             _pinCode = '';
             notifyListeners();
@@ -166,11 +155,11 @@ class AppState extends ChangeNotifier {
   void addProPackToCart() {
     // Define a mock 'Product' representing the subscription/pack (ID 999, Price 300)
     final proPack = Product(
-      id: 999, // Unique ID for the pack
+      id: 999,
       type: 'Subscription',
       title: 'Annual Pro Pack',
       description: 'Unlimited access for one year.',
-      price: 300, // Price set to 300 tokens
+      price: 300,
       isFree: false,
       category: 'Premium',
       tags: ['Unlimited'],
@@ -180,7 +169,7 @@ class AppState extends ChangeNotifier {
       reviewCount: 0,
       details: 'The ultimate subscription for full library access.',
       content: 'N/A',
-      imageUrl: '',
+      imageUrl: '', // Non-nullable field handled
     );
 
     // Check if Pro Pack is already in cart to prevent duplicates
@@ -197,8 +186,6 @@ class AppState extends ChangeNotifier {
 
   void buyTokens(int amount) {
     _walletTokens += amount;
-    // Assuming transactionHistory handling is done via side effect (commented out in original)
-    /* ... transactionHistory insert logic ... */
     notifyListeners();
   }
 
@@ -208,7 +195,6 @@ class AppState extends ChangeNotifier {
 
     _walletTokens -= totalCost;
     for (var item in _cartItems) {
-      /* ... transactionHistory insert logic ... */
       if (!_bookmarkedProductIds.contains(item.id)) {
         _bookmarkedProductIds.add(item.id);
       }

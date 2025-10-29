@@ -8,7 +8,9 @@ import 'package:provider/provider.dart';
 import '../../data/mock_data.dart';
 import '../../models/product.dart';
 import '../../state/app_state.dart';
-import '../../widgets/custom_widgets/product_card.dart';
+// NOTE: LibraryShelfItem import removed to fix the compile error
+// import '../../widgets/custom_widgets/library_shelf_item.dart';
+import '../../widgets/custom_widgets/product_card.dart'; // ProductCard will be used for both sections
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -17,7 +19,8 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-    // Define backupColor locally
+    // Define backupColor locally as per the implementation in main.dart
+    final Color backupColor = const Color(0xFF14B8A6);
 
     final filteredProducts = dummyProducts.where((p) {
       if (appState.homeFilter == 'all') return true;
@@ -50,7 +53,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // --- Role Switch Card ---
 
           // --- Offers Carousel (Simplified) ---
           GestureDetector(
@@ -78,12 +80,14 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+
           // --- My Library Shelf (Horizontal Scroll) ---
           Text(
             'My Library',
             style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
           ),
           const SizedBox(height: 8),
+
           SizedBox(
             height: 140,
             child: appState.bookmarkedProductIds.isEmpty
@@ -94,20 +98,33 @@ class HomeScreen extends StatelessWidget {
                   )
                 : ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: min(appState.bookmarkedProductIds.length, 6),
+                    itemCount: appState.bookmarkedProductIds.length,
                     itemBuilder: (context, index) {
+                      // Retrieve product safely using orElse (preferred method)
                       final product = dummyProducts.firstWhere(
                         (p) => p.id == appState.bookmarkedProductIds[index],
+                        orElse: () => dummyProducts
+                            .first, // Fallback to a guaranteed product
                       );
+
+                      // If the fallback product is always used, you might want to skip the item
+                      if (product.id == dummyProducts.first.id &&
+                          appState.bookmarkedProductIds[index] != product.id) {
+                        return const SizedBox.shrink();
+                      }
+
                       return Container(
                         width: 100,
+                        // FIX: Margin adjustment for horizontal overflow
                         margin: const EdgeInsets.only(right: 12),
+                        // FIX: Replaced LibraryShelfItem with ProductCard
                         child: ProductCard(product: product),
                       );
                     },
                   ),
           ),
           const SizedBox(height: 16),
+
           // --- Filters ---
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -125,9 +142,9 @@ class HomeScreen extends StatelessWidget {
                                 : theme.textTheme.bodyMedium?.color,
                           ),
                         ),
-                        // Used MaterialStateProperty to set color on chips
-                        color: WidgetStateProperty.resolveWith<Color>((
-                          Set<WidgetState> states,
+                        // FIXED: Use MaterialStateProperty
+                        color: MaterialStateProperty.resolveWith<Color>((
+                          Set<MaterialState> states,
                         ) {
                           if (appState.homeFilter == filter) {
                             return theme.colorScheme.primary;

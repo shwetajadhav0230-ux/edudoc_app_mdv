@@ -4,17 +4,106 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/mock_data.dart';
-import '../../models/offer.dart';
 import '../../state/app_state.dart';
+// Assuming Offer and Product models/data are accessible
+// NOTE: I am assuming the promotional banner is part of OffersScreen.
+
+// --- Helper Widget: _OfferCard (Included for context but not modified) ---
+class _OfferCard extends StatelessWidget {
+  final offer; // Assuming dynamic type if Offer class not provided
+  const _OfferCard({required this.offer});
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final theme = Theme.of(context);
+    final priceDisplay = offer.tokenPrice == 0
+        ? 'FREE'
+        : '${offer.tokenPrice} T.';
+
+    return Card(
+      child: InkWell(
+        onTap: () =>
+            appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    offer.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    offer.duration,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 4),
+                  Chip(
+                    label: Text(
+                      offer.discount,
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                    backgroundColor: theme.colorScheme.secondary,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(height: 16),
+                  Text(
+                    priceDisplay,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.tertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+// --- End Helper Widget ---
 
 class OffersScreen extends StatelessWidget {
   const OffersScreen({super.key});
 
+  // Helper function to handle the promotional banner's button action
+  void _handleBuyBanner(BuildContext context, AppState appState) {
+    // 1. Add the mock Pro Pack to the cart
+    appState.addProPackToCart();
+
+    // 2. Navigate immediately to the Cart screen
+    appState.navigate(AppScreen.cart);
+
+    // Optional: Show Snackbar confirmation that the item was added
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Annual Pro Pack added to cart!'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final _ = Provider.of<AppState>(context);
+    final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
+    // Assuming dummyOffers is accessible
     final activeOffers = dummyOffers
         .where((o) => o.status == 'Active')
         .toList();
@@ -59,7 +148,8 @@ class OffersScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {},
+                  // FIX: Call the handler to add the Pro Pack and navigate to Cart
+                  onPressed: () => _handleBuyBanner(context, appState),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                   ),
@@ -90,73 +180,12 @@ class OffersScreen extends StatelessWidget {
             itemCount: activeOffers.length,
             itemBuilder: (context, index) {
               final offer = activeOffers[index];
-              return _OfferCard(offer: offer);
+              return _OfferCard(
+                offer: offer,
+              ); // Use the locally defined helper widget
             },
           ),
         ],
-      ),
-    );
-  }
-}
-// --- Add this entire class ---
-
-class _OfferCard extends StatelessWidget {
-  final Offer offer;
-
-  const _OfferCard({required this.offer});
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-    final theme = Theme.of(context);
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () =>
-            appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Placeholder for an image
-            Container(
-              height: 80,
-              color: theme.colorScheme.primaryContainer,
-              child: Center(
-                child: Icon(
-                  Icons.collections_bookmark,
-                  color: theme.colorScheme.primary,
-                  size: 40,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                offer.title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Spacer(), // Pushes price to the bottom
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8.0,
-                vertical: 4.0,
-              ),
-              child: Text(
-                offer.tokenPrice == 0 ? 'FREE' : '${offer.tokenPrice} Tokens',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.tertiary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
