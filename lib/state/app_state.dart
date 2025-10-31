@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
-// NOTE: Assuming Offer model is available in the scope of AppState
-// import '../models/offer.dart';
+import '../models/user.dart'; // Import the new User model
+// Note: Assuming Offer model is available in the scope of AppState
 
 enum AppScreen {
   welcome,
@@ -26,10 +26,13 @@ enum AppScreen {
   userActivity,
   adminDashboard,
   reading,
+  // NEW: Profile Edit Screen
+  profileEdit,
 }
 
 class AppState extends ChangeNotifier {
   // --- Global State ---
+  // FIX APPLIED: Initial screen set to 'home' for stability
   AppScreen _currentScreen = AppScreen.home;
   AppScreen _previousPage = AppScreen.home;
   String _userRole = 'Admin';
@@ -37,15 +40,25 @@ class AppState extends ChangeNotifier {
   String? _selectedProductId;
   String? _selectedOfferId;
 
-  // --- User/Wallet State ---
+  // --- User/Profile State ---
   int _walletTokens = 450;
   final List<Product> _cartItems = [];
   final List<int> _bookmarkedProductIds = [1, 6];
-  final Map<String, dynamic> _currentUser = {
-    'name': 'Jane Doe',
-    'email': 'jane.doe@edudoc.com',
-  };
-  Map<String, dynamic> get currentUser => _currentUser;
+
+  // FIX: User object used for profile management
+  User _currentUser = User(
+    id: 'user_123',
+    fullName: 'Jane Doe',
+    email: 'jane.doe@edudoc.com',
+    phoneNumber: '555-1234',
+    bio: 'Avid student and note taker.',
+    profileImageBase64: null, // Starts null
+  );
+
+  // --- Profile Image Handling State ---
+  bool _isImageProcessing = false;
+
+  // --- FIX: Auth/Lock Screen State ---
   String _pinCode = '';
   final String correctPin = '1234';
   bool _showPasswordUnlock = false;
@@ -62,12 +75,16 @@ class AppState extends ChangeNotifier {
   int get walletTokens => _walletTokens;
   List<Product> get cartItems => _cartItems;
   List<int> get bookmarkedProductIds => _bookmarkedProductIds;
+  User get currentUser => _currentUser;
+  bool get isImageProcessing => _isImageProcessing;
+  String get homeFilter => _homeFilter;
+  int get homeCurrentPage => _homeCurrentPage;
+
+  // FIX: Auth/Lock Screen Getters
   String get pinCode => _pinCode;
   bool get showPasswordUnlock => _showPasswordUnlock;
   String? get selectedProductId => _selectedProductId;
   String? get selectedOfferId => _selectedOfferId;
-  String get homeFilter => _homeFilter;
-  int get homeCurrentPage => _homeCurrentPage;
 
   // --- Navigation & Routing ---
   void navigate(AppScreen screen, {String? id}) {
@@ -87,27 +104,42 @@ class AppState extends ChangeNotifier {
     } else if (_currentScreen == AppScreen.productDetails ||
         _currentScreen == AppScreen.offerDetails) {
       navigate(_previousPage);
+    } else if (_currentScreen == AppScreen.profileEdit) {
+      navigate(AppScreen.profile); // Explicitly go back to profile view
     } else {
       navigate(AppScreen.home);
     }
   }
 
-  // --- Theme/Role Logic ---
-  void toggleTheme() {
-    _isDarkTheme = !_isDarkTheme;
+  // --- Image Processing Flag ---
+  void setImageProcessing(bool processing) {
+    _isImageProcessing = processing;
     notifyListeners();
   }
 
-  void toggleUserRole() {
-    _userRole = _userRole == 'Admin' ? 'User' : 'Admin';
-    if (_currentScreen == AppScreen.adminDashboard ||
-        _currentScreen == AppScreen.userActivity) {
-      navigate(AppScreen.home);
-    }
+  // --- Profile Management ---
+  void saveProfile({
+    required String fullName,
+    required String email,
+    required String phoneNumber,
+    required String bio,
+    String? profileImageBase64,
+  }) {
+    // Update the local User object state
+    _currentUser = _currentUser.copyWith(
+      fullName: fullName,
+      email: email,
+      phoneNumber: phoneNumber,
+      bio: bio,
+      profileImageBase64: profileImageBase64,
+    );
     notifyListeners();
+
+    // Navigate back to the main profile page
+    navigate(AppScreen.profile);
   }
 
-  // --- Auth Lock Logic ---
+  // FIX: Auth Lock Logic Methods
   void pinEnter(String digit) {
     if (_pinCode.length < 4) {
       _pinCode += digit;
@@ -142,6 +174,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Theme/Role Logic ---
+  void toggleTheme() {
+    _isDarkTheme = !_isDarkTheme;
+    notifyListeners();
+  }
+
+  void toggleUserRole() {
+    _userRole = _userRole == 'Admin' ? 'User' : 'Admin';
+    if (_currentScreen == AppScreen.adminDashboard ||
+        _currentScreen == AppScreen.userActivity) {
+      navigate(AppScreen.home);
+    }
+    notifyListeners();
+  }
+
   // --- Cart/Wallet/Bookmark Logic ---
   void addToCart(Product product) {
     if (product.isFree) return;
@@ -150,7 +197,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // INTEGRATED FIX: Method to add the Annual Pro Pack (Existing from previous fix)
+  // INTEGRATED FIX: Method to add the Annual Pro Pack
   void addProPackToCart() {
     final proPack = Product(
       id: 999,
@@ -177,13 +224,10 @@ class AppState extends ChangeNotifier {
 
   // NEW METHOD: Adds all products in a specific bundle (Offer) to the cart.
   void addBundleToCart(dynamic offer) {
-    // Use dynamic or Offer class
     if (offer.status != 'Active') return;
 
-    // Remove any items that are part of this bundle but might be individually carted
-    _cartItems.removeWhere(
-      (item) => item.id == 999,
-    ); // Remove Pro Pack if adding bundle
+    // Remove any mock bundle/pack items first to ensure a clean addition
+    _cartItems.removeWhere((item) => item.id == 999 || item.id == offer.id);
 
     // Create a mock product representing the bundle itself for the cart/summary view
     final bundleProduct = Product(
@@ -218,6 +262,7 @@ class AppState extends ChangeNotifier {
 
   void buyTokens(int amount) {
     _walletTokens += amount;
+    // Assuming transactionHistory handling is done via side effect
     notifyListeners();
   }
 
@@ -227,6 +272,7 @@ class AppState extends ChangeNotifier {
 
     _walletTokens -= totalCost;
     for (var item in _cartItems) {
+      // Assuming transactionHistory handling is done via side effect
       if (!_bookmarkedProductIds.contains(item.id)) {
         _bookmarkedProductIds.add(item.id);
       }

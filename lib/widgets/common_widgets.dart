@@ -1,5 +1,3 @@
-// Auto-generated widgets from main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -17,33 +15,22 @@ import '../screens/offers/offers_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/reading_screen.dart';
 import '../screens/profile/activity_screen.dart';
+// FIX: Import the new profile edit screen
+import '../screens/profile/profile_edit_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/settings_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../state/app_state.dart';
-// import 'custom_widgets/profile_avatar.dart'; // REMOVED: Dependency on broken ProfileAvatar
 import 'custom_widgets/bottom_nav.dart';
+// Assuming ProfileAvatar is defined in 'custom_widgets/profile_avatar.dart'
+import 'custom_widgets/profile_avatar.dart';
 import 'custom_widgets/wallet_button.dart';
 
-// --- Safe Placeholder for Profile Avatar (Internal Fix) ---
-class _SafeProfileAvatar extends StatelessWidget {
-  final VoidCallback onTap;
-  const _SafeProfileAvatar({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: CircleAvatar(
-        radius: 20,
-        backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
-        // FIX: Use Icons.person instead of trying to load a missing asset
-        child: const Icon(Icons.person, color: Colors.white),
-      ),
-    );
-  }
-}
+// --- Safe Placeholder for Profile Avatar (Internal Fix - Retaining Structure) ---
+// NOTE: This internal placeholder is not strictly necessary if 'custom_widgets/profile_avatar.dart' is correct,
+// but we leave it commented out/removed from the file to avoid re-introducing the error.
+// The code relies on the actual imported ProfileAvatar (line 33) working.
 // --- End Safe Placeholder ---
 
 class MainAppScaffold extends StatelessWidget {
@@ -98,8 +85,8 @@ class MainAppScaffold extends StatelessWidget {
                       color: Colors.grey.shade400,
                     ),
                     const SizedBox(width: 8),
-                    // FIX: Use the safe, internal avatar widget instead of the external one
-                    _SafeProfileAvatar(
+                    // FIX: Use the imported ProfileAvatar
+                    ProfileAvatar(
                       onTap: () => appState.navigate(AppScreen.profile),
                     ),
                   ],
@@ -128,6 +115,8 @@ class MainAppScaffold extends StatelessWidget {
             case AppScreen.wallet:
             case AppScreen.userActivity:
             case AppScreen.settings:
+            // FIX: Ensure profile tab is selected when editing
+            case AppScreen.profileEdit:
               currentIndex = 3;
               break;
             default:
@@ -190,6 +179,11 @@ class MainScreenRouter extends StatelessWidget {
       case AppScreen.reading:
         currentView = const ReadingScreen();
         break;
+      // FIX: Add routing for the new ProfileEditScreen
+      case AppScreen.profileEdit:
+        currentView = const ProfileEditScreen();
+        showScaffold = false; // The edit screen has its own Scaffold/AppBar
+        break;
       default:
         showScaffold = true;
         currentView = _buildMainAppContent(appState.currentScreen);
@@ -223,13 +217,13 @@ class MainScreenRouter extends StatelessWidget {
         return const OfferDetailsScreen();
       case AppScreen.adminDashboard:
       case AppScreen.userActivity:
-        // Use a single screen to handle both user and admin activity views
         return const ActivityScreen();
       case AppScreen.productDetails:
         return const ProductDetailsScreen();
       case AppScreen.search:
         return const SearchScreen();
       default:
+        // This is the 404 error you were seeing
         return const Center(
           child: Text(
             '404 Page Not Found',

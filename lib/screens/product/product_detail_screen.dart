@@ -1,5 +1,3 @@
-// Auto-generated screen from main.dart
-
 import 'package:edudoc_app_mdv/models/product.dart' show Product;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,10 +5,21 @@ import 'package:provider/provider.dart';
 import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
 
-class ProductDetailsScreen extends StatelessWidget {
+class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({super.key});
 
-  // --- 1. Functional Helper Widgets (Moved into class scope) ---
+  @override
+  State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
+}
+
+class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+  // State to track whether all reviews should be shown
+  bool _showAllReviews = false;
+
+  // Initial number of reviews to display (default is 2, as seen in previous mock structure)
+  final int _initialReviewCount = 2;
+
+  // --- 1. Functional Helper Methods (Cart/Bookmark/Reviews) ---
 
   // Helper widget to provide a dynamic Bookmark icon with action/feedback
   Widget _buildBookmarkButton(
@@ -81,7 +90,7 @@ class ProductDetailsScreen extends StatelessWidget {
 
     final isOwned = appState.bookmarkedProductIds.contains(product.id);
     final priceText = product.isFree ? 'FREE' : '${product.price} Tokens';
-    final Color backupColor = const Color(0xFF14B8A6);
+    final Color backupColor = const Color(0xFF24E3C6); // Read button color
 
     // Get the appropriate icon based on the product type
     IconData typeIcon = product.type == 'Notes' ? Icons.note_alt : Icons.book;
@@ -95,12 +104,12 @@ class ProductDetailsScreen extends StatelessWidget {
       return Container(
         height: 180,
         decoration: BoxDecoration(
+          // Custom color from your original layout
           color: const Color(0xFF4C4435),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Center(
-          child: Icon(icon, size: 70, color: const Color(0xFFC6A153)),
-        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 70, color: const Color(0xFFC6A153)),
       );
     }
 
@@ -119,12 +128,22 @@ class ProductDetailsScreen extends StatelessWidget {
     }
     // --- End Media Widget Logic ---
 
+    // --- Reviews Logic ---
+    final int reviewsToDisplayCount = _showAllReviews
+        ? product.reviewCount
+        : _initialReviewCount;
+    final int effectiveReviewsCount =
+        reviewsToDisplayCount > product.reviewCount
+        ? product.reviewCount
+        : reviewsToDisplayCount;
+    final bool canShowAll = product.reviewCount > _initialReviewCount;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // FIX: Back button moved to the top left corner of the ScrollView
+          // 1. Back Button
           TextButton.icon(
             onPressed: appState.navigateBack,
             icon: const Icon(Icons.arrow_back, color: Colors.white70, size: 22),
@@ -132,12 +151,15 @@ class ProductDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // 1. Media Area (Full Width, Custom Style)
-          mediaWidget,
+          // 2. Media Area (Full Width)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: mediaWidget,
+          ),
 
           const SizedBox(height: 24),
 
-          // 2. Main Action Button
+          // 3. Main Action Button (Full Width)
           SizedBox(
             width: double.infinity,
             child: isOwned
@@ -155,7 +177,7 @@ class ProductDetailsScreen extends StatelessWidget {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF24E3C6),
+                      backgroundColor: backupColor, // Greenish color
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -189,18 +211,18 @@ class ProductDetailsScreen extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // 3. Action Buttons Row (Bookmark/Cart/Share)
+          // 4. Action Buttons Row (Bookmark/Cart/Share - Full Width)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // FUNCTIONAL FIX: Bookmark Button (Stateful)
+              // 1. Bookmark/Wishlist (Left)
               _buildBookmarkButton(
                 context,
                 product,
                 theme.colorScheme.secondary,
               ),
 
-              // FUNCTIONAL FIX: Cart Button (for secondary access/add to cart)
+              // 2. Cart Icon (Center)
               IconButton(
                 onPressed: () => _handleAddToCart(context, appState, product),
                 icon: const Icon(Icons.shopping_cart_outlined),
@@ -208,10 +230,16 @@ class ProductDetailsScreen extends StatelessWidget {
                 splashRadius: 24,
               ),
 
-              // Share Button
+              // 3. Share Button (Right)
               IconButton(
                 icon: const Icon(Icons.share_outlined, color: Colors.white54),
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Share functionality mocked.'),
+                    ),
+                  );
+                },
                 splashRadius: 24,
               ),
             ],
@@ -219,7 +247,7 @@ class ProductDetailsScreen extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // 4. Title & Price (Dynamic content)
+          // 5. Title & Price (Dynamic content)
           Text(
             product.title,
             style: const TextStyle(
@@ -258,7 +286,7 @@ class ProductDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // 5. Details and Metadata
+          // 6. Details and Metadata
           Text(
             product.details,
             style: const TextStyle(color: Colors.white70, fontSize: 15),
@@ -306,7 +334,7 @@ class ProductDetailsScreen extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // 6. Reviews Section (Dynamic data)
+          // 7. Reviews Section (Dynamic data)
           Text(
             'User Reviews (${product.reviewCount})',
             style: const TextStyle(
@@ -317,9 +345,10 @@ class ProductDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
+          // Review List
           Column(
             children: List.generate(
-              2,
+              effectiveReviewsCount, // Use the state-controlled count
               (index) => Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
@@ -335,20 +364,24 @@ class ProductDetailsScreen extends StatelessWidget {
                     color: Colors.white54,
                   ),
                   title: Text(
-                    index == 0 ? "Alex M." : "Sarah K.",
+                    index == 0
+                        ? "Alex M."
+                        : index == 1
+                        ? "Sarah K."
+                        : "User ${index + 1}",
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                   subtitle: Text(
-                    index == 0
-                        ? 'The best notes I\'ve bought! Super clear and highly detailed diagrams.'
-                        : 'Great content, but wish there were more practice examples. Still worth the tokens!',
+                    index % 2 == 0
+                        ? 'Great notes! Highly recommend.'
+                        : 'Worth the tokens.',
                     style: const TextStyle(color: Colors.white70),
                   ),
                   trailing: Text(
-                    index == 0 ? "5.0 ★" : "4.0 ★",
+                    '${(product.rating - (index * 0.1)).toStringAsFixed(1)} ★',
                     style: const TextStyle(
                       color: Colors.amberAccent,
                       fontWeight: FontWeight.bold,
@@ -359,13 +392,36 @@ class ProductDetailsScreen extends StatelessWidget {
             ),
           ),
 
-          TextButton(
-            onPressed: () {},
-            child: const Text(
-              "View All Reviews",
-              style: TextStyle(color: Colors.white70),
+          // "View All Reviews" Button (Show only if there are more reviews to see)
+          if (canShowAll && !_showAllReviews)
+            TextButton(
+              onPressed: () {
+                // FIX: Toggle state to show all reviews
+                setState(() {
+                  _showAllReviews = true;
+                });
+              },
+              child: Text(
+                'View All Reviews (${product.reviewCount})',
+                style: TextStyle(color: theme.colorScheme.secondary),
+              ),
             ),
-          ),
+
+          // Show "Hide Reviews" if all are shown and the initial count was exceeded
+          if (_showAllReviews && product.reviewCount > _initialReviewCount)
+            TextButton(
+              onPressed: () {
+                // FIX: Toggle state back to show initial reviews
+                setState(() {
+                  _showAllReviews = false;
+                });
+              },
+              child: Text(
+                'Hide Extra Reviews',
+                style: TextStyle(color: theme.colorScheme.secondary),
+              ),
+            ),
+
           const SizedBox(height: 42),
         ],
       ),

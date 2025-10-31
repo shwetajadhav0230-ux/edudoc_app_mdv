@@ -1,7 +1,8 @@
-// Auto-generated screen from main.dart
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../state/app_state.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -11,11 +12,24 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-    // Define backupColor locally
+    final user = appState.currentUser; // Get the User object
     final Color backupColor = const Color(0xFF14B8A6);
 
-    final ownedCount = appState.bookmarkedProductIds.length;
-    final user = appState.currentUser;
+    Widget profileAvatar;
+    if (user.profileImageBase64 != null &&
+        user.profileImageBase64!.isNotEmpty) {
+      final imageBytes = base64Decode(user.profileImageBase64!);
+      profileAvatar = CircleAvatar(
+        radius: 30,
+        backgroundImage: MemoryImage(imageBytes),
+      );
+    } else {
+      profileAvatar = CircleAvatar(
+        radius: 30,
+        backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
+        child: const Icon(Icons.person, color: Colors.white, size: 30),
+      );
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -27,30 +41,30 @@ class ProfileScreen extends StatelessWidget {
             style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
           ),
           const SizedBox(height: 16),
-          // Profile Card
+
+          // --- 1. Profile Details Card (Original Layout) ---
           Card(
             child: ListTile(
-              leading: CircleAvatar(
-                radius: 30,
-                backgroundColor: theme.colorScheme.primary,
-                child: const Icon(Icons.person, color: Colors.white),
-              ),
+              leading: profileAvatar,
               title: Text(
-                user['name'] as String,
+                user.fullName, // Use data from User object
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
               ),
-              subtitle: Text(user['email'] as String),
+              subtitle: Text(user.email), // Use data from User object
               trailing: IconButton(
                 icon: const Icon(Icons.edit),
-                onPressed: () {},
-              ), // Mock Edit Profile
+                // Navigate to the new edit screen
+                onPressed: () => appState.navigate(AppScreen.profileEdit),
+              ),
             ),
           ),
+
           const SizedBox(height: 24),
-          // Navigation Links
+
+          // --- 2. Navigation Links Card (Original Layout) ---
           Card(
             child: Column(
               children: [
@@ -68,7 +82,10 @@ class ProfileScreen extends StatelessWidget {
                     Icons.bookmark,
                     color: theme.colorScheme.secondary,
                   ),
-                  title: Text('My Bookmarks ($ownedCount)'),
+                  // FIX: Renamed 'My Bookmarks' to 'My Wishlisted'
+                  title: Text(
+                    'My Wishlisted (${appState.bookmarkedProductIds.length})',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => appState.navigate(AppScreen.bookmarks),
                 ),
@@ -96,7 +113,10 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(height: 24),
+
+          // --- Logout Button ---
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
