@@ -1,5 +1,4 @@
 // Auto-generated screen from main.dart
-
 import 'dart:math';
 
 import 'package:flutter/material.dart';

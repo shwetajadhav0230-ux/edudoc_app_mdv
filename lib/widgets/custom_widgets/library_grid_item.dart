@@ -42,17 +42,17 @@ class LibraryGridItem extends StatelessWidget {
                     ? Image.network(
                         product.imageUrl,
                         width: 70,
-                        height: 100,
+                        height: 70,
                         fit: BoxFit.cover,
                         errorBuilder: (c, e, s) => Container(
-                          width: 70,
+                          width: 100,
                           height: 100,
                           color: theme.disabledColor.withOpacity(0.1),
                           child: Icon(typeIcon, color: accentColor, size: 30),
                         ),
                       )
                     : Container(
-                        width: 70,
+                        width: 100,
                         height: 100,
                         color: theme.disabledColor.withOpacity(0.1),
                         child: Icon(typeIcon, color: accentColor, size: 30),
