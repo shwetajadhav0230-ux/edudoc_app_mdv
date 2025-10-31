@@ -21,128 +21,143 @@ class CartScreen extends StatelessWidget {
     final canCheckout =
         totalCost <= appState.walletTokens && appState.cartItems.isNotEmpty;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      // This Column ensures everything is stacked vertically
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Shopping Cart',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
-          ),
-          const SizedBox(height: 16),
+    return Scaffold(
+      // Wrapped in Scaffold to allow for AppBar
+      appBar: AppBar(
+        // Added Back Button logic
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              appState.navigateBack(), // Uses navigation logic from app_state
+        ),
+        title: Text('Shopping Cart', style: theme.textTheme.titleLarge),
+        elevation: 0,
+      ),
 
-          // --- Cart Items List ---
-          // This Column lists the cart items. It is INSIDE the main Column.
-          appState.cartItems.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48.0),
-                    child: Text('Your cart is empty.'),
-                  ),
-                )
-              : Column(
-                  children: appState.cartItems
-                      .map((item) => CartItem(product: item))
-                      .toList(),
-                ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        // This Column ensures everything is stacked vertically
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The title "Shopping Cart" is now in the AppBar, removed here
 
-          const SizedBox(height: 24), // Space between items and summary
-          // --- Summary Card ---
-          // This Card is now AFTER the cart items in the main Column
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order Summary',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontSize: 18,
-                      color: theme.colorScheme.primary, // Blue color
+            // Re-adding a small space if needed, though the AppBar spacing might suffice
+            // const SizedBox(height: 16),
+
+            // --- Cart Items List ---
+            // This Column lists the cart items. It is INSIDE the main Column.
+            appState.cartItems.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48.0),
+                      child: Text('Your cart is empty.'),
                     ),
+                  )
+                : Column(
+                    children: appState.cartItems
+                        .map((item) => CartItem(product: item))
+                        .toList(),
                   ),
-                  const SizedBox(height: 8),
-                  SummaryRow(
-                    label: 'Items (${appState.cartItems.length})',
-                    value: '$totalCost Tokens',
-                  ),
-                  SummaryRow(label: 'Tax/Fees (Simulated)', value: '0 Tokens'),
-                  const Divider(),
-                  SummaryRow(
-                    label: 'Total Tokens Required',
-                    value: '$totalCost Tokens',
-                    isTotal:
-                        true, // FIXED: Added missing flag for total styling
-                  ),
-                  const SizedBox(height: 16),
 
-                  // --- Gradient Button ---
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.secondary,
+            const SizedBox(height: 24), // Space between items and summary
+            // --- Summary Card ---
+            // This Card is now AFTER the cart items in the main Column
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Order Summary',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontSize: 18,
+                        color: theme.colorScheme.primary, // Blue color
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SummaryRow(
+                      label: 'Items (${appState.cartItems.length})',
+                      value: '$totalCost Tokens',
+                    ),
+                    SummaryRow(
+                      label: 'Tax/Fees (Simulated)',
+                      value: '0 Tokens',
+                    ),
+                    const Divider(),
+                    SummaryRow(
+                      label: 'Total Tokens Required',
+                      value: '$totalCost Tokens',
+                      isTotal: true,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Gradient Button ---
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.colorScheme.primary,
+                            theme.colorScheme.secondary,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(30.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
                         ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(30.0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: canCheckout ? appState.checkout : null,
-                      icon: const Icon(
-                        Icons.description, // Icon from image
-                        color: Colors.white,
-                      ),
-                      label: const Text(
-                        'Proceed to Checkout',
-                        style: TextStyle(
+                      child: ElevatedButton.icon(
+                        onPressed: canCheckout ? appState.checkout : null,
+                        icon: const Icon(
+                          Icons.description, // Icon from image
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // --- End Button ---
-                  if (!canCheckout && appState.cartItems.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Center(
-                        child: Text(
-                          'Insufficient tokens.',
+                        label: const Text(
+                          'Proceed to Checkout',
                           style: TextStyle(
-                            color: Colors.red.shade400,
-                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
                           ),
                         ),
                       ),
                     ),
-                ],
+
+                    // --- End Button ---
+                    if (!canCheckout && appState.cartItems.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Center(
+                          child: Text(
+                            'Insufficient tokens.',
+                            style: TextStyle(
+                              color: Colors.red.shade400,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

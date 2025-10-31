@@ -1,7 +1,6 @@
-// Auto-generated screen from main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
 
@@ -13,7 +12,9 @@ class BookmarksScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
-    final bookmarkedProducts = dummyProducts
+    // This filters ONLY for items whose IDs are in the bookmarked list,
+    // fulfilling the 'wishlist' requirement.
+    final wishlistedProducts = dummyProducts
         .where((p) => appState.bookmarkedProductIds.contains(p.id))
         .toList();
 
@@ -23,13 +24,16 @@ class BookmarksScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'My Saved Documents',
+            // FIX: Updated title to reflect "Wishlist"
+            'My Wishlisted Documents',
             style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
           ),
           const SizedBox(height: 16),
-          if (bookmarkedProducts.isEmpty)
-            const Center(child: Text('You have no bookmarked documents.')),
-          ...bookmarkedProducts.map(
+          if (wishlistedProducts.isEmpty)
+            const Center(
+              child: Text('Your wishlist is empty. Add a document!'),
+            ),
+          ...wishlistedProducts.map(
             (p) => Card(
               child: ListTile(
                 leading: Icon(
@@ -43,6 +47,7 @@ class BookmarksScreen extends StatelessWidget {
                   id: p.id.toString(),
                 ),
                 trailing: IconButton(
+                  // Action is to remove from the wishlist/bookmarks
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => appState.toggleBookmark(p.id),
                 ),

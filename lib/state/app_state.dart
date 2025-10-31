@@ -32,7 +32,6 @@ enum AppScreen {
 
 class AppState extends ChangeNotifier {
   // --- Global State ---
-  // FIX APPLIED: Initial screen set to 'home' for stability
   AppScreen _currentScreen = AppScreen.home;
   AppScreen _previousPage = AppScreen.home;
   String _userRole = 'Admin';
@@ -42,8 +41,10 @@ class AppState extends ChangeNotifier {
 
   // --- User/Profile State ---
   int _walletTokens = 450;
+  // ENSURED NON-NULLABLE INITIALIZATION:
   final List<Product> _cartItems = [];
   final List<int> _bookmarkedProductIds = [1, 6];
+  final List<int> _ownedProductIds = [101, 102]; // Library/Purchased items
 
   // FIX: User object used for profile management
   User _currentUser = User(
@@ -75,6 +76,7 @@ class AppState extends ChangeNotifier {
   int get walletTokens => _walletTokens;
   List<Product> get cartItems => _cartItems;
   List<int> get bookmarkedProductIds => _bookmarkedProductIds;
+  List<int> get ownedProductIds => _ownedProductIds; // Added for Library
   User get currentUser => _currentUser;
   bool get isImageProcessing => _isImageProcessing;
   String get homeFilter => _homeFilter;
@@ -93,7 +95,10 @@ class AppState extends ChangeNotifier {
       _previousPage = _currentScreen;
     }
     _currentScreen = screen;
-    _selectedProductId = (screen == AppScreen.productDetails) ? id : null;
+    _selectedProductId =
+        (screen == AppScreen.productDetails || screen == AppScreen.reading)
+        ? id
+        : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
     notifyListeners();
   }
@@ -104,8 +109,12 @@ class AppState extends ChangeNotifier {
     } else if (_currentScreen == AppScreen.productDetails ||
         _currentScreen == AppScreen.offerDetails) {
       navigate(_previousPage);
-    } else if (_currentScreen == AppScreen.profileEdit) {
-      navigate(AppScreen.profile); // Explicitly go back to profile view
+    } else if (_currentScreen == AppScreen.profileEdit ||
+        _currentScreen ==
+            AppScreen
+                .library // Library navigation back
+                ) {
+      navigate(AppScreen.home);
     } else {
       navigate(AppScreen.home);
     }
@@ -266,21 +275,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // FIX: Checkout now adds purchased items to the *Library* list (`_ownedProductIds`)
   void checkout() {
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
     if (totalCost > _walletTokens) return;
 
     _walletTokens -= totalCost;
     for (var item in _cartItems) {
-      // Assuming transactionHistory handling is done via side effect
-      if (!_bookmarkedProductIds.contains(item.id)) {
-        _bookmarkedProductIds.add(item.id);
+      // Logic: Only add purchased products to the library (ownedProductIds)
+      if (!_ownedProductIds.contains(item.id)) {
+        _ownedProductIds.add(item.id);
       }
     }
     _cartItems.clear();
     notifyListeners();
   }
 
+  // Original functionality remains for Wishlist
   void toggleBookmark(int id) {
     if (_bookmarkedProductIds.contains(id)) {
       _bookmarkedProductIds.remove(id);

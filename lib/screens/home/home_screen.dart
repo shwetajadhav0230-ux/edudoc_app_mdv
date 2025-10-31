@@ -1,3 +1,5 @@
+// home_screen.dart
+
 // Auto-generated screen from main.dart
 import 'dart:math';
 
@@ -7,9 +9,7 @@ import 'package:provider/provider.dart';
 import '../../data/mock_data.dart';
 import '../../models/product.dart';
 import '../../state/app_state.dart';
-// NOTE: LibraryShelfItem import removed to fix the compile error
-// import '../../widgets/custom_widgets/library_shelf_item.dart';
-import '../../widgets/custom_widgets/product_card.dart'; // ProductCard will be used for both sections
+import '../../widgets/custom_widgets/product_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,7 +18,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-    // Define backupColor locally as per the implementation in main.dart
     final Color backupColor = const Color(0xFF14B8A6);
 
     final filteredProducts = dummyProducts.where((p) {
@@ -38,6 +37,20 @@ class HomeScreen extends StatelessWidget {
         : <Product>[];
 
     final totalPages = (filteredProducts.length / appState.itemsPerPage).ceil();
+
+    // --- FIX APPLIED: Robust product retrieval for the Library Shelf ---
+    final List<Product>
+    ownedProductsForShelf = appState.ownedProductIds.expand((id) {
+      // Use try-catch or a robust 'firstWhere' with a fallback that throws/returns nothing
+      try {
+        final product = dummyProducts.firstWhere((p) => p.id == id);
+        return [product];
+      } catch (e) {
+        // If the product ID is in ownedProductIds but not in dummyProducts (e.g., deleted), skip it.
+        return <Product>[];
+      }
+    }).toList();
+    // --- END FIX ---
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -88,35 +101,23 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 8),
 
           SizedBox(
-            height: 140,
-            child: appState.bookmarkedProductIds.isEmpty
+            height: 180, // INCREASED HEIGHT to accommodate the full ProductCard
+            child: ownedProductsForShelf.isEmpty
                 ? const Center(
                     child: Text(
-                      'Your library is empty. Bookmark or purchase a document!',
+                      'Your library is empty. Purchase a document to see it here.',
                     ),
                   )
                 : ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: appState.bookmarkedProductIds.length,
+                    itemCount: ownedProductsForShelf.length,
                     itemBuilder: (context, index) {
-                      // Retrieve product safely using orElse (preferred method)
-                      final product = dummyProducts.firstWhere(
-                        (p) => p.id == appState.bookmarkedProductIds[index],
-                        orElse: () => dummyProducts
-                            .first, // Fallback to a guaranteed product
-                      );
-
-                      // If the fallback product is always used, you might want to skip the item
-                      if (product.id == dummyProducts.first.id &&
-                          appState.bookmarkedProductIds[index] != product.id) {
-                        return const SizedBox.shrink();
-                      }
+                      final product = ownedProductsForShelf[index];
 
                       return Container(
-                        width: 100,
-                        // FIX: Margin adjustment for horizontal overflow
+                        // FIX: Explicitly set a wider width for the card here
+                        width: 140,
                         margin: const EdgeInsets.only(right: 12),
-                        // FIX: Replaced LibraryShelfItem with ProductCard
                         child: ProductCard(product: product),
                       );
                     },
@@ -141,7 +142,6 @@ class HomeScreen extends StatelessWidget {
                                 : theme.textTheme.bodyMedium?.color,
                           ),
                         ),
-                        // FIXED: Use MaterialStateProperty
                         color: MaterialStateProperty.resolveWith<Color>((
                           Set<MaterialState> states,
                         ) {

@@ -8,7 +8,7 @@ import '../../state/app_state.dart';
 // Assuming Offer and Product models/data are accessible
 // NOTE: I am assuming the promotional banner is part of OffersScreen.
 
-// --- Helper Widget: _OfferCard (Included for context but not modified) ---
+// --- Helper Widget: _OfferCard (No changes needed, kept for reference) ---
 class _OfferCard extends StatelessWidget {
   final offer; // Assuming dynamic type if Offer class not provided
   const _OfferCard({required this.offer});
@@ -108,84 +108,97 @@ class OffersScreen extends StatelessWidget {
         .where((o) => o.status == 'Active')
         .toList();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Special Offers & Bundles',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
-          ),
-          const SizedBox(height: 16),
-          // Promotional Banner
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.secondary,
-                  theme.colorScheme.primary,
+    return Scaffold(
+      // Wrapped in Scaffold
+      appBar: AppBar(
+        // Added Back Button logic
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => appState.navigateBack(), // Navigates back
+        ),
+        // Moved the main title here
+        title: Text(
+          'Special Offers & Bundles',
+          style: theme.textTheme.titleLarge,
+        ),
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Removed the redundant Text widget for the title
+            // const SizedBox(height: 16), // No longer needed as AppBar provides spacing
+
+            // Promotional Banner
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.secondary,
+                    theme.colorScheme.primary,
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Unlock Unlimited Access!',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Get the Annual Pro Pack and save 300 tokens!',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => _handleBuyBanner(context, appState),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    child: const Text(
+                      'Buy Now',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                  ),
                 ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Unlock Unlimited Access!',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Get the Annual Pro Pack and save 300 tokens!',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  // FIX: Call the handler to add the Pro Pack and navigate to Cart
-                  onPressed: () => _handleBuyBanner(context, appState),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                  ),
-                  child: const Text(
-                    'Buy Now',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 24),
+            Text(
+              'Curated Subject Bundles',
+              style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Curated Subject Bundles',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
-          ),
-          const SizedBox(height: 8),
-          // Dynamic Offer Cards
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16.0,
-              mainAxisSpacing: 16.0,
-              childAspectRatio: 1.2,
+            const SizedBox(height: 8),
+            // Dynamic Offer Cards
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16.0,
+                mainAxisSpacing: 16.0,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: activeOffers.length,
+              itemBuilder: (context, index) {
+                final offer = activeOffers[index];
+                return _OfferCard(
+                  offer: offer,
+                ); // Use the locally defined helper widget
+              },
             ),
-            itemCount: activeOffers.length,
-            itemBuilder: (context, index) {
-              final offer = activeOffers[index];
-              return _OfferCard(
-                offer: offer,
-              ); // Use the locally defined helper widget
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

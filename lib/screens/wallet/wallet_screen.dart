@@ -1,10 +1,11 @@
-// Auto-generated screen from main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../state/app_state.dart';
-import '../../widgets/common_widgets.dart';
+
 import '../../data/mock_data.dart';
+import '../../state/app_state.dart';
+import '../../widgets/custom_widgets/buy_tokens_modal.dart' show BuyTokensModal;
+// NOTE: Assuming BuyTokensModal is imported/accessible
+
 class WalletScreen extends StatelessWidget {
   const WalletScreen({super.key});
 
@@ -20,66 +21,90 @@ class WalletScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Token Wallet',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
+          // NEW: Back to Home Button in the same line as the heading
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton.icon(
+                onPressed: () => appState.navigate(AppScreen.home),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: theme.textTheme.bodyMedium?.color,
+                  size: 20,
+                ),
+                label: Text(
+                  'Token Wallet',
+                  style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
+                ),
+              ),
+              // Displaying current tokens in the header line as a separate element
+              Row(
+                children: [
+                  Icon(
+                    Icons.monetization_on,
+                    color: theme.colorScheme.tertiary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${appState.walletTokens}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyMedium?.color,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          // Current Balance Card
+
+          // Current Balance Card (Simplified structure since details are in the Transaction History)
           Card(
             color: theme.cardColor,
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Text(
+                    'Balance',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Current Token Balance',
-                        style: TextStyle(color: Colors.grey.shade500),
+                        '${appState.walletTokens} Tokens',
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.tertiary,
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.monetization_on,
-                            color: theme.colorScheme.tertiary,
-                            size: 40,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${appState.walletTokens}',
-                            style: TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.tertiary,
-                            ),
-                          ),
-                        ],
+                      ElevatedButton.icon(
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (context) => const BuyTokensModal(),
+                        ),
+                        icon: const Icon(Icons.add, color: Colors.white),
+                        label: const Text(
+                          'Buy Tokens',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                        ),
                       ),
                     ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => showDialog(
-                      context: context,
-                      builder: (context) => const BuyTokensModal(),
-                    ),
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      'Buy Tokens',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                    ),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 24),
+
           // Transaction History
           Text(
             'Transaction History',
