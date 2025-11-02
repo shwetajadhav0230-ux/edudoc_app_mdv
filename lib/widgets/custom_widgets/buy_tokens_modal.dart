@@ -37,9 +37,7 @@ class BuyTokensModal extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               child: Card(
-                color: amount != 500
-                    ? theme.cardColor
-                    : theme.colorScheme.secondary.withOpacity(0.1),
+
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

@@ -89,7 +89,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     IconData typeIcon = product.type == 'Notes' ? Icons.note_alt : Icons.book;
     final bool hasCustomImage =
-        product.imageUrl != null && product.imageUrl.isNotEmpty;
+        product.imageUrl.isNotEmpty;
 
     // --- Media Widget Logic ---
     Widget _buildPlaceholderMedia(IconData icon) {
@@ -107,7 +107,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           size: 70,
           color: isDarkTheme
               ? const Color(0xFFC6A153)
-              : theme.colorScheme.primary.withOpacity(0.7),
+              : theme.colorScheme.primary.withAlpha(179),
         ),
       );
     }
@@ -160,7 +160,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               Icons.share_outlined,
               color: isDarkTheme
                   ? Colors.white54
-                  : theme.colorScheme.onSurface.withOpacity(0.6),
+                  : theme.colorScheme.onSurface.withAlpha(153),
             ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -385,7 +385,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 (index) => Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: theme.cardColor.withOpacity(isDarkTheme ? 0.5 : 1.0),
+                    color: theme.cardColor.withAlpha(isDarkTheme ? 128 : 255),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: isDarkTheme
                         ? null
@@ -414,8 +414,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ? 'Great notes! Highly recommend.'
                           : 'Worth the tokens.',
                       style: TextStyle(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                          0.7,
+                        color: theme.textTheme.bodyMedium?.color?.withAlpha(
+                          179,
                         ),
                       ),
                     ),

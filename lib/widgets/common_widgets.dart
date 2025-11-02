@@ -1,10 +1,8 @@
-// FIX: Assume this entire block is the content of common_widgets.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../screens/auth/lock_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/permissions_screen.dart';
 import '../screens/auth/signup_screen.dart';
 import '../screens/auth/welcome_screen.dart';
 import '../screens/cart/cart_screen.dart';
@@ -16,6 +14,7 @@ import '../screens/offers/offers_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/reading_screen.dart';
 import '../screens/profile/activity_screen.dart';
+// FIX: Import the new profile edit screen
 import '../screens/profile/profile_edit_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/settings_screen.dart';
@@ -23,12 +22,11 @@ import '../screens/search/search_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../state/app_state.dart';
 import 'custom_widgets/bottom_nav.dart';
+// Assuming ProfileAvatar is defined in 'custom_widgets/profile_avatar.dart'
 import 'custom_widgets/profile_avatar.dart';
 import 'custom_widgets/wallet_button.dart';
+import 'custom_widgets/cart_icon_badge.dart';
 
-// -----------------------------------------------------
-// FIX 1: MainAppScaffold must be defined BEFORE MainScreenRouter
-// -----------------------------------------------------
 
 class MainAppScaffold extends StatelessWidget {
   final Widget child;
@@ -44,42 +42,54 @@ class MainAppScaffold extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
+    // Replicates the backdrop-blur fixed header
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
+        toolbarHeight: 50,
+        backgroundColor: theme.colorScheme.surface.withAlpha(242),
         elevation: theme.brightness == Brightness.light ? 1 : 0,
-        toolbarHeight: 72,
-
-        // Logo/Title placement
-        title: Row(
-          children: [
-            Icon(Icons.school, color: theme.colorScheme.tertiary),
-            const SizedBox(width: 8),
-            Text(
-              'EduDoc',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 24,
-                color: theme.colorScheme.primary,
-              ),
+        flexibleSpace: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0,vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.school, color: theme.colorScheme.tertiary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'EduDoc',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontSize: 24,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    WalletButton(
+                      onTap: () => appState.navigate(AppScreen.wallet),
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () => appState.navigate(AppScreen.search),
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(width: 8),
+                    // FIX: Use the imported ProfileAvatar
+                    ProfileAvatar(
+                      onTap: () => appState.navigate(AppScreen.profile),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
-
-        // Icon Placements using standard 'actions'
-        actions: [
-          WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
-          const SizedBox(width: 8),
-
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => appState.navigate(AppScreen.search),
-            color: Colors.grey.shade400,
           ),
-
-          ProfileAvatar(onTap: () => appState.navigate(AppScreen.profile)),
-          const SizedBox(width: 8),
-        ],
+        ),
       ),
       body: child,
       bottomNavigationBar: Builder(
@@ -100,6 +110,7 @@ class MainAppScaffold extends StatelessWidget {
             case AppScreen.wallet:
             case AppScreen.userActivity:
             case AppScreen.settings:
+            // FIX: Ensure profile tab is selected when editing
             case AppScreen.profileEdit:
               currentIndex = 3;
               break;
@@ -132,10 +143,6 @@ class MainAppScaffold extends StatelessWidget {
   }
 }
 
-// -----------------------------------------------------
-// FIX 2: MainScreenRouter now correctly references MainAppScaffold
-// -----------------------------------------------------
-
 class MainScreenRouter extends StatelessWidget {
   final Color backupColor;
   const MainScreenRouter({super.key, required this.backupColor});
@@ -144,6 +151,7 @@ class MainScreenRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
 
+    // This handles the transition between Auth/Lock screens and the main Scaffold.
     Widget currentView;
     bool showScaffold = false;
 
@@ -158,20 +166,18 @@ class MainScreenRouter extends StatelessWidget {
         currentView = const SignUpScreen();
         break;
       case AppScreen.permissions:
-        // This line is structurally correct, but the PermissionsScreen class
-        // definition in its own file is likely missing or misspelled.
-        currentView = const PermissionsScreen() as Widget;
+        currentView = const PermissionsScreen();
         break;
       case AppScreen.lockUnlock:
         currentView = const LockUnlockScreen();
         break;
       case AppScreen.reading:
         currentView = const ReadingScreen();
-        showScaffold = false; // Reading screen typically full-screen
         break;
+      // FIX: Add routing for the new ProfileEditScreen
       case AppScreen.profileEdit:
         currentView = const ProfileEditScreen();
-        showScaffold = false; // Edit screen typically full-screen
+        showScaffold = false; // The edit screen has its own Scaffold/AppBar
         break;
       default:
         showScaffold = true;
@@ -179,7 +185,6 @@ class MainScreenRouter extends StatelessWidget {
         break;
     }
 
-    // FIX: MainAppScaffold is used correctly as a constructor
     return showScaffold
         ? MainAppScaffold(backupColor: backupColor, child: currentView)
         : currentView;
@@ -213,6 +218,7 @@ class MainScreenRouter extends StatelessWidget {
       case AppScreen.search:
         return const SearchScreen();
       default:
+        // This is the 404 error you were seeing
         return const Center(
           child: Text(
             '404 Page Not Found',
@@ -223,12 +229,7 @@ class MainScreenRouter extends StatelessWidget {
   }
 }
 
-class PermissionsScreen {
-  const PermissionsScreen();
-}
-
 class BuyTokensModal extends StatelessWidget {
-  // ... (content of BuyTokensModal remains the same) ...
   const BuyTokensModal({super.key});
 
   @override
@@ -265,7 +266,7 @@ class BuyTokensModal extends StatelessWidget {
               },
               child: Card(
                 color: amount == 500
-                    ? theme.colorScheme.secondary.withOpacity(0.1)
+                    ? theme.colorScheme.secondary.withAlpha(25)
                     : theme.cardColor,
                 child: Center(
                   child: Column(
@@ -305,6 +306,33 @@ class BuyTokensModal extends StatelessWidget {
           child: const Text('Cancel'),
         ),
       ],
+    );
+  }
+}
+
+class PermissionsScreen extends StatelessWidget {
+  const PermissionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Permissions')),
+      body: ListView(
+        children: const [
+          PermissionTile(
+            icon: Icons.camera_alt,
+            title: 'Camera',
+            description: 'Access to camera for scanning documents',
+            enabled: true,
+          ),
+          PermissionTile(
+            icon: Icons.notifications,
+            title: 'Notifications',
+            description: 'Receive alerts and updates',
+            enabled: false,
+          ),
+        ],
+      ),
     );
   }
 }

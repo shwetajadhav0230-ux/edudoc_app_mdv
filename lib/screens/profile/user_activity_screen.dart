@@ -4,9 +4,17 @@ import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
 
-
-class UserActivityScreen extends StatelessWidget {
+// --- MODIFIED: Converted to StatefulWidget ---
+class UserActivityScreen extends StatefulWidget {
   const UserActivityScreen({super.key});
+
+  @override
+  State<UserActivityScreen> createState() => _UserActivityScreenState();
+}
+
+class _UserActivityScreenState extends State<UserActivityScreen> {
+  // --- NEW: State variable to track the active filter ---
+  String _activeFilter = 'All';
 
   @override
   Widget build(BuildContext context) {
@@ -14,9 +22,19 @@ class UserActivityScreen extends StatelessWidget {
     // Define backupColor locally
     final Color backupColor = const Color(0xFF14B8A6);
 
-    final userActivity = transactionHistory
-        .where((tx) => tx.type == 'Debit' || tx.type == 'Download')
-        .toList();
+    // --- MODIFIED: Filter logic now uses the _activeFilter state ---
+    final userActivity = transactionHistory.where((tx) {
+      if (_activeFilter == 'All') {
+        return tx.type == 'Debit' || tx.type == 'Download';
+      }
+      if (_activeFilter == 'Purchases') {
+        return tx.type == 'Debit';
+      }
+      if (_activeFilter == 'Downloads') {
+        return tx.type == 'Download';
+      }
+      return false; // Default case
+    }).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -28,10 +46,45 @@ class UserActivityScreen extends StatelessWidget {
             style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
           ),
           const SizedBox(height: 16),
+
+          // --- NEW: Filter Chips ---
+          Wrap(
+            spacing: 8.0,
+            children: ['All', 'Purchases', 'Downloads'].map((filter) {
+              final isSelected = _activeFilter == filter;
+              return ChoiceChip(
+                label: Text(filter),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _activeFilter = filter;
+                    });
+                  }
+                },
+                selectedColor: theme.colorScheme.primary,
+                backgroundColor: theme.cardColor,
+                labelStyle: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : theme.textTheme.bodyMedium?.color,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            }).toList(),
+          ),
+          // --- END NEW ---
+
+          const SizedBox(height: 16),
           if (userActivity.isEmpty)
-            const Center(child: Text('No recent activity.')),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 32.0),
+                child: Text('No activity found for this filter.'),
+              ),
+            ),
           ...userActivity.map(
-            (tx) => Card(
+                (tx) => Card(
               child: ListTile(
                 leading: Icon(
                   tx.type == 'Debit' ? Icons.shopping_bag : Icons.download,

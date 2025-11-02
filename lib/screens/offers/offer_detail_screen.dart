@@ -157,17 +157,17 @@ class OfferDetailsScreen extends StatelessWidget {
                           appState,
                           offer,
                         )
-                            : null, // Disables button if not active
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: offer.tokenPrice == 0
+                              ? backupColor
+                              : theme.colorScheme.primary,
+                        ), // Disables button if not active
                         child: Text(
                           offer.tokenPrice == 0
                               ? 'Claim Free Bundle'
                               : 'Buy Bundle Now',
                           style: const TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: offer.tokenPrice == 0
-                              ? backupColor
-                              : theme.colorScheme.primary,
                         ),
                       ),
                     ),

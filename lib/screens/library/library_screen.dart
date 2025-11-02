@@ -1,11 +1,15 @@
 // Auto-generated screen from main.dart
 
-import 'package:edudoc_app_mdv/widgets/custom_widgets/product_card.dart';
+// --- MODIFICATION: Removed ProductCard import ---
+// import 'package:edudoc_app_mdv/widgets/custom_widgets/product_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
+
+// --- NEW: Import the new LibraryShelfCard ---
+import '../../widgets/custom_widgets/library_shelf_card.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -53,18 +57,17 @@ class LibraryScreen extends StatelessWidget {
                 crossAxisCount: 3,
                 crossAxisSpacing: 16.0,
                 mainAxisSpacing: 16.0,
-                childAspectRatio: 0.7,
+                // This aspect ratio works well for the new card
+                // (width: 150 / height: 200 = 0.75)
+                childAspectRatio: 0.75,
               ),
               itemCount: ownedProducts.length,
               itemBuilder: (context, index) {
                 final product = ownedProducts[index];
-                return ProductCard(
+
+                // --- MODIFICATION: Replaced ProductCard with LibraryShelfCard ---
+                return LibraryShelfCard(
                   product: product,
-                  // Navigate to reading view for owned documents
-                  onTap: () => appState.navigate(
-                    AppScreen.reading,
-                    id: product.id.toString(),
-                  ),
                 );
               },
             ),

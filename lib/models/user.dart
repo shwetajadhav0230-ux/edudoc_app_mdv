@@ -33,4 +33,6 @@ class User {
       profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
     );
   }
+
+  void operator [](String other) {}
 }

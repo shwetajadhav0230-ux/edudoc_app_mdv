@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../models/product.dart';
 import '../../state/app_state.dart';
 
@@ -13,15 +12,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Use listen: false as we only need to access methods, not rebuild the whole card
     final appState = Provider.of<AppState>(context, listen: false);
-
-    IconData typeIcon = Icons.article; // Default
-    if (product.type == 'Books') {
-      typeIcon = Icons.book_outlined;
-    } else if (product.type == 'Journals') {
-      typeIcon = Icons.edit_note;
-    }
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -29,39 +20,47 @@ class ProductCard extends StatelessWidget {
       shadowColor: theme.colorScheme.shadow.withOpacity(0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap:
-            onTap ??
-            () => appState.navigate(
-              AppScreen.productDetails,
-              id: product.id.toString(),
-            ),
+        onTap: onTap ??
+                () => appState.navigate(AppScreen.productDetails,
+                id: product.id.toString()),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- 1. Image and Type Chip Section ---
-            Stack(children: [_buildImage(theme), _buildTypeChip(theme)]),
+            Stack(
+              children: [
+                _buildImage(theme), // Updated with placeholder
+                _buildTypeChip(theme), // Updated to new pill style
+                // Bookmark icon removed from here
+              ],
+            ),
             // --- 2. Content Section ---
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
+                // FIX: This is the Column from line 41
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  // FIX: Use spaceBetween to push top/bottom content
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildTitle(theme),
-                    const SizedBox(height: 4),
-                    _buildAuthor(theme),
-                    const SizedBox(height: 5),
-                    _buildRating(theme),
+                    // --- Group top content together ---
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min, // Don't expand
+                      children: [
+                        _buildTitle(theme),
+                        const SizedBox(height: 4),
+                        _buildAuthor(theme),
+                        const SizedBox(height: 5),
+                        _buildRating(theme),
+                      ],
+                    ),
 
-                    // Spacer pushes the new action row to the bottom
-                    const Spacer(),
+                    // const Spacer(), // <-- REMOVE this Spacer
 
-                    // --- 3. Bottom Action Row ---
-                    _buildBottomActionRow(
-                      theme,
-                      context,
-                      appState,
-                    ), // Pass appState
+                    // --- 3. New Bottom Action Row (replaces Price/Divider) ---
+                    _buildBottomActionRow(theme, context),
                   ],
                 ),
               ),
@@ -71,33 +70,32 @@ class ProductCard extends StatelessWidget {
       ),
     );
   }
-
-  // --- Builder Methods (Unchanged image/text helpers) ---
+  // --- Builder Methods ---
 
   Widget _buildImage(ThemeData theme) {
     // Check if the URL is null or empty
-    if (product.imageUrl == null || product.imageUrl.isEmpty) {
+    if (product.imageUrl.isEmpty) {
       return _buildPlaceholder(theme); // Show placeholder
     }
 
     return Image.network(
       product.imageUrl,
-      height: 190,
+      height: 100,
       width: double.infinity,
       fit: BoxFit.cover,
       loadingBuilder: (context, child, progress) {
         return progress == null
             ? child
             : Container(
-                height: 100,
-                color: theme.cardColor,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              );
+          height: 100,
+          color: theme.cardColor,
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        );
       },
       // Show placeholder on error
       errorBuilder: (context, error, stackTrace) {
@@ -106,8 +104,9 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // NEW: Placeholder widget (as seen in your new image)
   Widget _buildPlaceholder(ThemeData theme) {
-    IconData typeIcon = Icons.article_outlined;
+    IconData typeIcon = Icons.article_outlined; // Default
     if (product.type == 'Books') {
       typeIcon = Icons.book_outlined;
     } else if (product.type == 'Journals') {
@@ -115,7 +114,7 @@ class ProductCard extends StatelessWidget {
     }
 
     return Container(
-      height: 100,
+      height: 100, // You can adjust this height
       width: double.infinity,
       color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
       child: Center(
@@ -128,6 +127,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // UPDATED: New "Notes" Pill Style
   Widget _buildTypeChip(ThemeData theme) {
     return Positioned(
       top: 10,
@@ -135,27 +135,27 @@ class ProductCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
         decoration: BoxDecoration(
+          // Using a dark, semi-transparent color for visibility on any image
           color: Colors.black.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(16.0),
+          borderRadius: BorderRadius.circular(16.0), // Pill shape
         ),
         child: Text(
           product.type,
           style: theme.textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Colors.white, // Light text
           ),
         ),
       ),
     );
   }
 
+  // --- Content Text (Unchanged) ---
   Widget _buildTitle(ThemeData theme) {
     return Text(
       product.title,
-      style: theme.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.bold,
-        fontSize: 15,
-      ),
+      style: theme.textTheme.titleMedium
+          ?.copyWith(fontWeight: FontWeight.bold, fontSize: 15),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
@@ -179,9 +179,8 @@ class ProductCard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           product.rating.toString(),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style:
+          theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         Flexible(
           child: Text(
@@ -198,12 +197,7 @@ class ProductCard extends StatelessWidget {
   }
 
   // --- NEW: Bottom Row Widget ---
-
-  Widget _buildBottomActionRow(
-    ThemeData theme,
-    BuildContext context,
-    AppState appState,
-  ) {
+  Widget _buildBottomActionRow(ThemeData theme, BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -213,23 +207,15 @@ class ProductCard extends StatelessWidget {
         // 2. Buttons
         Row(
           children: [
-            _buildCartButton(
-              theme,
-              appState,
-              context,
-            ), // Passed context/appState
+            // MODIFICATION 1: Pass context to the cart button
+            _buildCartButton(theme, context),
             const SizedBox(width: 8),
-            _buildBookmarkButton(
-              theme,
-              appState,
-              context,
-            ), // Passed context/appState
+            _buildBookmarkButton(theme, context),
           ],
-        ),
+        )
       ],
     );
   }
-
   // NEW: Price display (Icon + Number)
   Widget _buildPriceInfo(ThemeData theme) {
     if (product.isFree) {
@@ -245,13 +231,13 @@ class ProductCard extends StatelessWidget {
     return Row(
       children: [
         Icon(
-          Icons.monetization_on_rounded,
+          Icons.monetization_on_rounded, // Coin stack icon
           color: Colors.amber.shade700,
           size: 22,
         ),
         const SizedBox(width: 6),
         Text(
-          product.price.toString(),
+          product.price.toString(), // Just the number
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
@@ -261,39 +247,34 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // NEW: Cart Button (Now functional)
-  Widget _buildCartButton(
-    ThemeData theme,
-    AppState appState,
-    BuildContext context,
-  ) {
-    // Only show cart button if item is purchasable (not free and not subscription based, though free items are implicitly added via cart)
-    // For simplicity, we make the button clickable only if the item is not free.
-    // If it's free, the main card tap/action button handles acquisition.
-    // However, your request implies this button should work for all actions.
-
-    // We only show the Cart button if the item costs money, otherwise the user should tap the card for download.
-    if (product.isFree) return const SizedBox.shrink();
-
+  // NEW: Cart Button
+  Widget _buildCartButton(ThemeData theme, BuildContext context) {
+    // Using a simple Container + InkWell for perfect circle
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary, // Using primary color for cart
+        color: Colors.purple.shade400, // Matching your image
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: Colors.purple.withAlpha(77),
             blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
+            offset: Offset(0, 4),
+          )
         ],
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
+        // MODIFICATION 3: Implement the onTap logic
         onTap: () {
+          // Get the AppState (listen: false because it's an action)
+          final appState = Provider.of<AppState>(context, listen: false);
+
+          // Call the addToCart method from app_state.dart
           appState.addToCart(product);
-          // Show Snackbar confirmation
+
+          // Show a confirmation snackbar
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${product.title} added to Cart.'),
@@ -309,17 +290,12 @@ class ProductCard extends StatelessWidget {
       ),
     );
   }
-
-  // NEW: Bookmark Button (Now functional and stateful)
-  Widget _buildBookmarkButton(
-    ThemeData theme,
-    AppState appState,
-    BuildContext context,
-  ) {
-    // We use a Consumer here so ONLY this icon rebuilds when bookmarks change, not the whole card.
+  // NEW: Bookmark Button
+  Widget _buildBookmarkButton(ThemeData theme, BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        final isBookmarked = appState.bookmarkedProductIds.contains(product.id);
+        final isBookmarked =
+        appState.bookmarkedProductIds.contains(product.id);
 
         return Container(
           width: 40,
@@ -333,27 +309,12 @@ class ProductCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             onTap: () {
               appState.toggleBookmark(product.id);
-              // Show Snackbar confirmation
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isBookmarked
-                        ? '${product.title} removed from Wishlist.'
-                        : '${product.title} added to Wishlist.',
-                  ),
-                  duration: const Duration(milliseconds: 1000),
-                ),
-              );
             },
             child: Icon(
-              isBookmarked
-                  ? Icons.bookmark_rounded
-                  : Icons.bookmark_border_rounded,
+              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
               // Use a striking color when bookmarked
               color: isBookmarked
-                  ? theme
-                        .colorScheme
-                        .secondary // Pink accent
+                  ? Colors.pink.shade400
                   : theme.colorScheme.onSurface.withOpacity(0.7),
               size: 22,
             ),
@@ -362,4 +323,10 @@ class ProductCard extends StatelessWidget {
       },
     );
   }
+
+// This method is no longer needed at the bottom
+// Widget _buildPrice(ThemeData theme) { ... }
+
+// This method is no longer needed in the stack
+// Widget _buildBookmarkIcon() { ... }
 }

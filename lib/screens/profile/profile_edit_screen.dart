@@ -173,7 +173,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     // Default icon avatar
     return CircleAvatar(
       radius: 60,
-      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+      backgroundColor: theme.colorScheme.primary.withAlpha(26),
       child: Icon(Icons.person, size: 60, color: theme.colorScheme.primary),
     );
   }

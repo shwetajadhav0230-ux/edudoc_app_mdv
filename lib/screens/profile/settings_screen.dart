@@ -31,7 +31,7 @@ class SettingsScreen extends StatelessWidget {
                 value: appState.isDarkTheme,
                 onChanged: (_) => appState.toggleTheme(),
                 // Replaced activeColor with activeTrackColor/activeThumbColor for Switch
-                activeTrackColor: theme.colorScheme.primary.withOpacity(0.5),
+                activeTrackColor: theme.colorScheme.primary.withAlpha(128),
                 activeThumbColor: theme.colorScheme.primary,
               ),
             ),
@@ -57,8 +57,8 @@ class SettingsScreen extends StatelessWidget {
                     value: true,
                     onChanged: (_) {},
                     // Replaced activeColor with activeTrackColor/activeThumbColor for Switch
-                    activeTrackColor: theme.colorScheme.tertiary.withOpacity(
-                      0.5,
+                    activeTrackColor: theme.colorScheme.tertiary.withAlpha(
+                      128,
                     ),
                     activeThumbColor: theme.colorScheme.tertiary,
                   ),

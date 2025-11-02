@@ -180,6 +180,9 @@ class OffersScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             // Dynamic Offer Cards
+            // ... (omitted code) ...
+
+            // Dynamic Offer Cards
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -187,10 +190,12 @@ class OffersScreen extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16.0,
                 mainAxisSpacing: 16.0,
-                childAspectRatio: 1.2,
+                // MODIFICATION: Changed 1.2 to 1.1 to give the card more height
+                childAspectRatio: 1.1,
               ),
               itemCount: activeOffers.length,
               itemBuilder: (context, index) {
+// ... (omitted code) ...
                 final offer = activeOffers[index];
                 return _OfferCard(
                   offer: offer,

@@ -23,7 +23,7 @@ class LibraryGridItem extends StatelessWidget {
         ? Icons.book
         : Icons.note_alt;
     final bool hasImage =
-        product.imageUrl != null && product.imageUrl.isNotEmpty;
+        product.imageUrl.isNotEmpty;
 
     return GestureDetector(
       onTap: () =>
@@ -45,16 +45,16 @@ class LibraryGridItem extends StatelessWidget {
                         height: 70,
                         fit: BoxFit.cover,
                         errorBuilder: (c, e, s) => Container(
-                          width: 100,
-                          height: 100,
-                          color: theme.disabledColor.withOpacity(0.1),
+                          width: 70,
+                          height: 70,
+                          color: theme.disabledColor.withAlpha(26),
                           child: Icon(typeIcon, color: accentColor, size: 30),
                         ),
                       )
                     : Container(
-                        width: 100,
-                        height: 100,
-                        color: theme.disabledColor.withOpacity(0.1),
+                        width: 70,
+                        height: 70,
+                        color: theme.disabledColor.withAlpha(26),
                         child: Icon(typeIcon, color: accentColor, size: 30),
                       ),
               ),

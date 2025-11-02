@@ -34,8 +34,7 @@ class EduDocApp extends StatelessWidget {
         primary: primaryColor,
         secondary: secondaryColor,
         tertiary: tertiaryColor,
-        surface: Color(0xFF1E293B), // Card/Dialog backgrounds
-        background: Color(0xFF0F172A), // Scaffold background
+        surface: Color(0xFF1E293B), // Scaffold background
       ),
       scaffoldBackgroundColor: const Color(0xFF0F172A),
       cardColor: const Color(0xFF1E293B),
@@ -72,8 +71,7 @@ class EduDocApp extends StatelessWidget {
         primary: Color(0xFF4F46E5), // Indigo 600
         secondary: Color(0xFFEC4899), // Pink 500
         tertiary: tertiaryColor,
-        surface: Color(0xFFFFFFFF), // Card/Dialog backgrounds
-        background: Color(0xFFF9FAFB), // Scaffold background
+        surface: Color(0xFFFFFFFF), // Scaffold background
       ),
       scaffoldBackgroundColor: const Color(0xFFF9FAFB),
       cardColor: const Color(0xFFFFFFFF),
