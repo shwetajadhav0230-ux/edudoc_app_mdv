@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Assume this package is available
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
@@ -18,23 +18,36 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  // REMOVED: TextEditingController _bioController;
-  late TextEditingController _bioController; // Retain declaration structure
+  late TextEditingController _bioController;
   String? _currentImageBase64;
   final ImagePicker _picker = ImagePicker();
+
+  // FIX: Define the new, larger file size limit (5 MB)
+  static const int _maxImageSizeInBytes = 5 * 1024 * 1024;
 
   @override
   void initState() {
     super.initState();
-    final user = Provider.of<AppState>(context, listen: false).currentUser;
-    // NOTE: Accessing fields from the User object
-    _nameController = TextEditingController(text: user.fullName);
-    _emailController = TextEditingController(text: user.email);
-    _phoneController = TextEditingController(text: user.phoneNumber ?? '');
-    _bioController = TextEditingController(
-      text: user.bio ?? '',
-    ); // Initialize but remove usage
-    _currentImageBase64 = user.profileImageBase64;
+
+    // Initialize controllers with empty values first
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _bioController = TextEditingController();
+
+    // Defer accessing context for Provider until after the frame build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final user = Provider.of<AppState>(context, listen: false).currentUser;
+
+      // Update controllers with actual user data
+      _nameController.text = user.fullName;
+      _emailController.text = user.email;
+      _phoneController.text = user.phoneNumber ?? '';
+      _bioController.text = user.bio ?? '';
+      _currentImageBase64 = user.profileImageBase64;
+      setState(() {});
+    });
   }
 
   @override
@@ -49,6 +62,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   // --- Image Handling Logic ---
 
   Future<void> _pickImage(ImageSource source) async {
+    if (!mounted) return;
     final appState = Provider.of<AppState>(context, listen: false);
 
     appState.setImageProcessing(true); // Start loading indicator
@@ -57,20 +71,20 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       final XFile? pickedFile = await _picker.pickImage(source: source);
 
       if (pickedFile != null) {
-        // Step 1: Read and potentially compress the file
         final bytes = await pickedFile.readAsBytes();
 
-        // Check size (1MB limit)
-        if (bytes.lengthInBytes > 1024 * 1024) {
+        // FIX: Check against the increased size limit (5MB)
+        if (bytes.lengthInBytes > _maxImageSizeInBytes) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Image too large. Max 1MB allowed.')),
+            // FIX: Updated user message
+            const SnackBar(content: Text('Image too large. Max 5MB allowed.')),
           );
           appState.setImageProcessing(false);
           return;
         }
 
-        // Step 2: Convert to Base64
+        // Convert to Base64
         setState(() {
           _currentImageBase64 = base64Encode(bytes);
         });
@@ -103,7 +117,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               ListTile(
                 leading: const Icon(Icons.photo_library),
                 title: const Text('Choose from Gallery'),
-                // FIX: Add Navigator.pop for clean closing before async operation starts
                 onTap: () {
                   Navigator.of(context).pop();
                   _pickImage(ImageSource.gallery);
@@ -126,7 +139,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
-                    _removePhoto();
+                    _removePhoto(); // FIX: Removed photo call
                   },
                 ),
             ],
@@ -137,35 +150,31 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   }
 
   void _saveChanges() {
-    // NOTE: Bio is removed from the save process.
     if (_formKey.currentState!.validate()) {
       final appState = Provider.of<AppState>(context, listen: false);
       appState.saveProfile(
         fullName: _nameController.text,
         email: _emailController.text,
         phoneNumber: _phoneController.text,
-        bio: _bioController
-            .text, // Retain parameter value, but input field is gone
+        // We pass the bio content, even if the field isn't visible,
+        // to maintain the data structure in AppState.
+        bio: _bioController.text,
         profileImageBase64: _currentImageBase64,
       );
-      // Navigation is handled inside saveProfile
     }
   }
 
-  // --- Avatar Display (FIXED: Accepts theme parameter) ---
-  // This helper method is part of the State class scope
+  // --- Avatar Display ---
   Widget _buildProfileAvatar(AppState appState, ThemeData theme) {
     if (appState.isImageProcessing) {
       return CircleAvatar(
         radius: 60,
-        // Using theme surface for the loading background
         backgroundColor: theme.colorScheme.surface,
         child: const CircularProgressIndicator(),
       );
     }
 
     if (_currentImageBase64 != null && _currentImageBase64!.isNotEmpty) {
-      // Decode Base64 string to display image
       final imageBytes = base64Decode(_currentImageBase64!);
       return CircleAvatar(radius: 60, backgroundImage: MemoryImage(imageBytes));
     }
@@ -180,7 +189,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX: Define theme and appState here to ensure they are in scope for all functions
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
@@ -189,7 +197,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         title: const Text('Edit Profile'),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: appState.navigateBack, // Cancel button alternative
+          onPressed: appState.navigateBack,
         ),
       ),
       body: SingleChildScrollView(
@@ -203,7 +211,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  // FIX: Pass theme to the avatar builder
                   _buildProfileAvatar(appState, theme),
                   Positioned(
                     bottom: 0,
@@ -273,12 +280,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               ),
               const SizedBox(height: 16),
 
-              // REMOVED: Bio / About TextFormField (to meet user requirement)
+              // FIX: Bio / About TextFormField completely removed as requested.
               /*
               TextFormField(
                 controller: _bioController,
                 decoration: const InputDecoration(
-                  labelText: 'Bio / About You',
+                  labelText: 'Bio / About You (Optional)',
                   prefixIcon: Icon(Icons.info_outline),
                 ),
                 maxLines: 3,
