@@ -1,81 +1,143 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/product.dart';
 import '../../state/app_state.dart';
 
-class ProductCard extends StatelessWidget {
+// Converted to StatefulWidget to manage hover state
+class ProductCard extends StatefulWidget {
   final Product product;
   final VoidCallback? onTap;
 
   const ProductCard({super.key, required this.product, this.onTap});
 
   @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard> {
+  bool _isHovering = false;
+
+  // Define hover constants
+  static const double _hoverScale = 1.02;
+  static const double _normalScale = 1.0;
+  static const double _hoverElevation = 8;
+  static const double _normalElevation = 4;
+  static const Duration _animationDuration = Duration(milliseconds: 200);
+
+  // --- Animation Handlers ---
+  void _onEnter(PointerEvent details) {
+    setState(() {
+      _isHovering = true;
+    });
+  }
+
+  void _onExit(PointerEvent details) {
+    setState(() {
+      _isHovering = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final appState = Provider.of<AppState>(context, listen: false);
+    final isDarkTheme = theme.brightness == Brightness.dark;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      shadowColor: theme.colorScheme.shadow.withOpacity(0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap ??
-                () => appState.navigate(AppScreen.productDetails,
-                id: product.id.toString()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- 1. Image and Type Chip Section ---
-            Stack(
-              children: [
-                _buildImage(theme), // Updated with placeholder
-                _buildTypeChip(theme), // Updated to new pill style
-                // Bookmark icon removed from here
-              ],
-            ),
-            // --- 2. Content Section ---
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                // FIX: This is the Column from line 41
+    // Check ownership status (using Consumer for this widget)
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final isOwned = appState.ownedProductIds.contains(widget.product.id);
+
+        // Determine the main tap action: Read if owned, Details if not
+        final appStateMethods = Provider.of<AppState>(context, listen: false);
+        final actualOnTap = isOwned
+            ? () => appStateMethods.navigate(
+                AppScreen.reading,
+                id: widget.product.id.toString(),
+              )
+            : widget.onTap ??
+                  () => appStateMethods.navigate(
+                    AppScreen.productDetails,
+                    id: widget.product.id.toString(),
+                  );
+
+        return MouseRegion(
+          onEnter: _onEnter,
+          onExit: _onExit,
+          cursor: SystemMouseCursors.click,
+          child: AnimatedScale(
+            scale: _isHovering ? _hoverScale : _normalScale,
+            duration: _animationDuration,
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              // FIX: Explicitly set the color for contrast
+              color: isDarkTheme ? theme.colorScheme.surface : theme.cardColor,
+              elevation: _isHovering ? _hoverElevation : _normalElevation,
+              shadowColor: isDarkTheme
+                  ? Colors.black.withOpacity(0.8)
+                  : theme.colorScheme.shadow.withOpacity(0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: InkWell(
+                onTap: actualOnTap,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  // FIX: Use spaceBetween to push top/bottom content
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // --- Group top content together ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min, // Don't expand
+                    // --- 1. Image and Type Chip Section ---
+                    Stack(
                       children: [
-                        _buildTitle(theme),
-                        const SizedBox(height: 4),
-                        _buildAuthor(theme),
-                        const SizedBox(height: 5),
-                        _buildRating(theme),
+                        _buildImage(theme, widget.product),
+                        _buildTypeChip(theme, widget.product),
                       ],
                     ),
+                    // --- 2. Content Section ---
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // --- Group top content together ---
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildTitle(theme, widget.product),
+                                _buildAuthor(theme, widget.product),
+                                const SizedBox(height: 5),
+                                _buildRating(theme, widget.product),
+                              ],
+                            ),
 
-                    // const Spacer(), // <-- REMOVE this Spacer
-
-                    // --- 3. New Bottom Action Row (replaces Price/Divider) ---
-                    _buildBottomActionRow(theme, context),
+                            // --- 3. New Bottom Action Row (Conditional) ---
+                            _buildBottomActionRow(
+                              theme,
+                              context,
+                              appStateMethods,
+                              isOwned,
+                              widget.product,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
+
   // --- Builder Methods ---
 
-  Widget _buildImage(ThemeData theme) {
-    // Check if the URL is null or empty
+  Widget _buildImage(ThemeData theme, Product product) {
     if (product.imageUrl.isEmpty) {
-      return _buildPlaceholder(theme); // Show placeholder
+      return _buildPlaceholder(theme, product);
     }
 
     return Image.network(
@@ -87,26 +149,24 @@ class ProductCard extends StatelessWidget {
         return progress == null
             ? child
             : Container(
-          height: 100,
-          color: theme.cardColor,
-          child: Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        );
+                height: 100,
+                color: theme.cardColor,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              );
       },
-      // Show placeholder on error
       errorBuilder: (context, error, stackTrace) {
-        return _buildPlaceholder(theme);
+        return _buildPlaceholder(theme, product);
       },
     );
   }
 
-  // NEW: Placeholder widget (as seen in your new image)
-  Widget _buildPlaceholder(ThemeData theme) {
-    IconData typeIcon = Icons.article_outlined; // Default
+  Widget _buildPlaceholder(ThemeData theme, Product product) {
+    IconData typeIcon = Icons.article_outlined;
     if (product.type == 'Books') {
       typeIcon = Icons.book_outlined;
     } else if (product.type == 'Journals') {
@@ -114,7 +174,7 @@ class ProductCard extends StatelessWidget {
     }
 
     return Container(
-      height: 100, // You can adjust this height
+      height: 100,
       width: double.infinity,
       color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
       child: Center(
@@ -127,41 +187,40 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // UPDATED: New "Notes" Pill Style
-  Widget _buildTypeChip(ThemeData theme) {
+  Widget _buildTypeChip(ThemeData theme, Product product) {
     return Positioned(
       top: 10,
       left: 10,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
         decoration: BoxDecoration(
-          // Using a dark, semi-transparent color for visibility on any image
           color: Colors.black.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(16.0), // Pill shape
+          borderRadius: BorderRadius.circular(16.0),
         ),
         child: Text(
           product.type,
           style: theme.textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.white, // Light text
+            color: Colors.white,
           ),
         ),
       ),
     );
   }
 
-  // --- Content Text (Unchanged) ---
-  Widget _buildTitle(ThemeData theme) {
+  Widget _buildTitle(ThemeData theme, Product product) {
     return Text(
       product.title,
-      style: theme.textTheme.titleMedium
-          ?.copyWith(fontWeight: FontWeight.bold, fontSize: 15),
+      style: theme.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.bold,
+        fontSize: 15,
+      ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildAuthor(ThemeData theme) {
+  Widget _buildAuthor(ThemeData theme, Product product) {
     return Text(
       'by ${product.author}',
       style: theme.textTheme.bodySmall?.copyWith(
@@ -172,15 +231,16 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _buildRating(ThemeData theme) {
+  Widget _buildRating(ThemeData theme, Product product) {
     return Row(
       children: [
         Icon(Icons.star_rounded, color: Colors.amber, size: 20),
         const SizedBox(width: 4),
         Text(
           product.rating.toString(),
-          style:
-          theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         Flexible(
           child: Text(
@@ -196,28 +256,52 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // --- NEW: Bottom Row Widget ---
-  Widget _buildBottomActionRow(ThemeData theme, BuildContext context) {
+  // --- Conditional Bottom Row Widget ---
+  Widget _buildBottomActionRow(
+    ThemeData theme,
+    BuildContext context,
+    AppState appState,
+    bool isOwned,
+    Product product,
+  ) {
+    if (isOwned) {
+      // Show READ button if owned
+      return SizedBox(
+        height: 40,
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () =>
+              appState.navigate(AppScreen.reading, id: product.id.toString()),
+          icon: const Icon(Icons.menu_book, size: 18, color: Colors.black),
+          label: const Text('Read', style: TextStyle(color: Colors.black)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.colorScheme.tertiary,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      );
+    }
+
+    // Show Price, Cart, and Bookmark buttons if NOT owned
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 1. Price
-        _buildPriceInfo(theme),
+        _buildPriceInfo(theme, product),
         // 2. Buttons
         Row(
           children: [
-            // MODIFICATION 1: Pass context to the cart button
-            _buildCartButton(theme, context),
+            _buildCartButton(theme, context, product),
             const SizedBox(width: 8),
-            _buildBookmarkButton(theme, context),
+            _buildBookmarkButton(theme, context, product),
           ],
-        )
+        ),
       ],
     );
   }
-  // NEW: Price display (Icon + Number)
-  Widget _buildPriceInfo(ThemeData theme) {
+
+  Widget _buildPriceInfo(ThemeData theme, Product product) {
     if (product.isFree) {
       return Text(
         'FREE',
@@ -231,13 +315,13 @@ class ProductCard extends StatelessWidget {
     return Row(
       children: [
         Icon(
-          Icons.monetization_on_rounded, // Coin stack icon
+          Icons.monetization_on_rounded,
           color: Colors.amber.shade700,
           size: 22,
         ),
         const SizedBox(width: 6),
         Text(
-          product.price.toString(), // Just the number
+          product.price.toString(),
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
@@ -247,34 +331,31 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // NEW: Cart Button
-  Widget _buildCartButton(ThemeData theme, BuildContext context) {
-    // Using a simple Container + InkWell for perfect circle
+  Widget _buildCartButton(
+    ThemeData theme,
+    BuildContext context,
+    Product product,
+  ) {
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.purple.shade400, // Matching your image
+        color: Colors.purple.shade400,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
             color: Colors.purple.withAlpha(77),
             blurRadius: 8,
-            offset: Offset(0, 4),
-          )
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        // MODIFICATION 3: Implement the onTap logic
         onTap: () {
-          // Get the AppState (listen: false because it's an action)
           final appState = Provider.of<AppState>(context, listen: false);
-
-          // Call the addToCart method from app_state.dart
           appState.addToCart(product);
 
-          // Show a confirmation snackbar
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${product.title} added to Cart.'),
@@ -290,18 +371,20 @@ class ProductCard extends StatelessWidget {
       ),
     );
   }
-  // NEW: Bookmark Button
-  Widget _buildBookmarkButton(ThemeData theme, BuildContext context) {
+
+  Widget _buildBookmarkButton(
+    ThemeData theme,
+    BuildContext context,
+    Product product,
+  ) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        final isBookmarked =
-        appState.bookmarkedProductIds.contains(product.id);
+        final isBookmarked = appState.bookmarkedProductIds.contains(product.id);
 
         return Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            // Dark, theme-aware color
             color: theme.colorScheme.onSurface.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
@@ -311,8 +394,9 @@ class ProductCard extends StatelessWidget {
               appState.toggleBookmark(product.id);
             },
             child: Icon(
-              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-              // Use a striking color when bookmarked
+              isBookmarked
+                  ? Icons.bookmark_rounded
+                  : Icons.bookmark_border_rounded,
               color: isBookmarked
                   ? Colors.pink.shade400
                   : theme.colorScheme.onSurface.withOpacity(0.7),
@@ -323,10 +407,4 @@ class ProductCard extends StatelessWidget {
       },
     );
   }
-
-// This method is no longer needed at the bottom
-// Widget _buildPrice(ThemeData theme) { ... }
-
-// This method is no longer needed in the stack
-// Widget _buildBookmarkIcon() { ... }
 }
