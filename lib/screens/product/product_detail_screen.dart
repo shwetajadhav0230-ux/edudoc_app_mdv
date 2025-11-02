@@ -118,8 +118,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         borderRadius: BorderRadius.circular(16),
         child: Image.network(
           product.imageUrl,
-          height: 180,
-          width: double.infinity,
+          height: 200,
+          width: double.maxFinite,
           fit: BoxFit.cover,
           errorBuilder: (c, e, s) => _buildPlaceholderMedia(typeIcon),
         ),
@@ -259,7 +259,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       label: Text(
                         product.isFree
                             ? 'Download Now'
-                            : 'Purchase for ${product.price} T.',
+                            : 'Add To Cart ',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -283,13 +283,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    onPressed: () =>
-                        _handleAddToCart(context, appState, product),
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                    color: Colors.amber,
-                    splashRadius: 24,
-                  ),
+                  // IconButton(
+                  //   onPressed: () =>
+                  //       _handleAddToCart(context, appState, product),
+                  //   icon: const Icon(Icons.shopping_cart_outlined),
+                  //   color: Colors.amber,
+                  //   splashRadius: 24,
+                  // ),
                 ],
               ),
 
