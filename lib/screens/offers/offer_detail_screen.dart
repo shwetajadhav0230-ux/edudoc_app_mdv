@@ -12,10 +12,10 @@ class OfferDetailsScreen extends StatelessWidget {
 
   // Helper function to handle the "Buy Bundle Now" button action
   void _handleBuyBundle(
-    BuildContext context,
-    AppState appState,
-    dynamic offer,
-  ) {
+      BuildContext context,
+      AppState appState,
+      dynamic offer,
+      ) {
     appState.addBundleToCart(offer);
 
     // Navigate immediately to the Cart screen
@@ -38,7 +38,7 @@ class OfferDetailsScreen extends StatelessWidget {
     final offerId = int.tryParse(appState.selectedOfferId ?? '') ?? 201;
 
     final offer = dummyOffers.firstWhere(
-      (o) => o.id == offerId,
+          (o) => o.id == offerId,
       orElse: () => dummyOffers.first,
     );
 
@@ -48,24 +48,27 @@ class OfferDetailsScreen extends StatelessWidget {
         .map(
           (id) => dummyProducts.firstWhere(
             (p) => p.id == id,
-            orElse: () => dummyProducts.first,
-          ),
-        )
+        orElse: () => dummyProducts.first,
+      ),
+    )
         .toList();
     final originalPrice = bundledProducts.fold(0, (sum, p) => sum + p.price);
     final priceDisplay = offer.tokenPrice == 0
         ? 'FREE'
         : '${offer.tokenPrice} Tokens';
 
+    // --- Logic for the Validity Flag ---
+    final bool isActive = offer.status == 'Active';
+    final Color flagColor = isActive ? Colors.green.shade600 : Colors.red.shade600;
+    final String flagText = isActive ? 'Available' : offer.status; // e.g., 'Expired', 'Inactive'
+    final IconData flagIcon = isActive ? Icons.check_circle : Icons.cancel;
+
     return Scaffold(
-      // <--- WRAPPED IN SCAFFOLD
       appBar: AppBar(
-        // <--- IMPLEMENTED STANDARD BACK BUTTON
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => appState.navigateBack(),
         ),
-        // Moved the Bundle Title here
         title: Text(offer.title, style: theme.textTheme.titleLarge),
         elevation: 0,
       ),
@@ -74,146 +77,151 @@ class OfferDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // REMOVED: TextButton.icon for navigation
-            // REMOVED: Redundant Title Text widget
-
-            // Added space after AppBar context (optional, but maintains visual padding)
             const SizedBox(height: 8),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Summary & Actions
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Bundle Summary',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontSize: 20,
-                            ),
-                          ),
-                          const Divider(),
-                          // Detailed Description/Details Section
-                          Text(
-                            'Description',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            // Placeholder text for offer details
-                            'This is a limited-time bundle offering significant savings on our curated selection of top-rated documents. Ideal for jumpstarting a new semester or career focus.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+            // --- MODIFICATION: Removed the Row(..) wrapper ---
 
-                          // Pricing Section
-                          Text('Pricing', style: theme.textTheme.titleMedium),
-                          const SizedBox(height: 4),
-
-                          SummaryRow(
-                            label: 'Total Value',
-                            value: '$originalPrice T',
-                          ),
-                          SummaryRow(label: 'Discount', value: offer.discount),
-                          SummaryRow(label: 'Duration', value: offer.duration),
-                          const Divider(),
-                          SummaryRow(
-                            label: 'Bundle Price',
-                            value: priceDisplay,
-                            isTotal: true,
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: offer.status == 'Active'
-                                  ? () => _handleBuyBundle(
-                                      context,
-                                      appState,
-                                      offer,
-                                    )
-                                  : null,
-                              child: Text(
-                                offer.tokenPrice == 0
-                                    ? 'Claim Free Bundle'
-                                    : 'Buy Bundle Now',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: offer.tokenPrice == 0
-                                    ? backupColor
-                                    : theme.colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                          // Display status if inactive
-                          if (offer.status != 'Active')
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Center(
-                                child: Text(
-                                  'Offer is ${offer.status.toUpperCase()}',
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            ),
-                        ],
+            // --- MODIFICATION: Removed Expanded(...) wrapper ---
+            // Summary & Actions
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bundle Summary',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontSize: 20,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Products Included
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Included Documents (${bundledProducts.length})',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontSize: 20,
-                            ),
-                          ),
-                          const Divider(),
-                          // Document List
-                          ...bundledProducts.map(
-                            (p) => ListTile(
-                              onTap: () => appState.navigate(
-                                AppScreen.productDetails,
-                                id: p.id.toString(),
-                              ),
-                              dense: true,
-                              title: Text(
-                                p.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              trailing: Text(
-                                '${p.price} T.',
-                                style: TextStyle(
-                                  color: theme.colorScheme.tertiary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 8),
+
+                    // --- Validity Flag Chip ---
+                    Chip(
+                      label: Text(
+                        flagText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      backgroundColor: flagColor,
+                      avatar: Icon(
+                        flagIcon,
+                        color: Colors.white,
+                        size: 18,
                       ),
                     ),
-                  ),
+
+                    const Divider(),
+                    // Detailed Description/Details Section
+                    Text(
+                      'Description',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      // Placeholder text for offer details
+                      'This is a limited-time bundle offering significant savings on our curated selection of top-rated documents. Ideal for jumpstarting a new semester or career focus.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Pricing Section
+                    Text('Pricing', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 4),
+
+                    SummaryRow(
+                      label: 'Total Value',
+                      value: '$originalPrice T',
+                    ),
+                    SummaryRow(label: 'Discount', value: offer.discount),
+                    SummaryRow(label: 'Duration', value: offer.duration),
+                    const Divider(),
+                    SummaryRow(
+                      label: 'Bundle Price',
+                      value: priceDisplay,
+                      isTotal: true,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        // This button is your "repurchase" button
+                        onPressed: isActive
+                            ? () => _handleBuyBundle(
+                          context,
+                          appState,
+                          offer,
+                        )
+                            : null, // Disables button if not active
+                        child: Text(
+                          offer.tokenPrice == 0
+                              ? 'Claim Free Bundle'
+                              : 'Buy Bundle Now',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: offer.tokenPrice == 0
+                              ? backupColor
+                              : theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
+
+            // --- MODIFICATION: Added vertical spacing ---
+            const SizedBox(height: 16),
+
+            // --- MODIFICATION: Removed Expanded(...) wrapper ---
+            // Products Included
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Included Documents (${bundledProducts.length})',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontSize: 20,
+                      ),
+                    ),
+                    const Divider(),
+                    // Document List
+                    ...bundledProducts.map(
+                          (p) => ListTile(
+                        onTap: () => appState.navigate(
+                          AppScreen.productDetails,
+                          id: p.id.toString(),
+                        ),
+                        dense: true,
+                        title: Text(
+                          p.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: Text(
+                          '${p.price} T.',
+                          style: TextStyle(
+                            color: theme.colorScheme.tertiary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // --- MODIFICATION: Removed Row's closing tags ---
           ],
         ),
       ),
