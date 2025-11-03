@@ -88,8 +88,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final Color readButtonColor = const Color(0xFF24E3C6);
 
     IconData typeIcon = product.type == 'Notes' ? Icons.note_alt : Icons.book;
-    final bool hasCustomImage =
-        product.imageUrl.isNotEmpty;
+    final bool hasCustomImage = product.imageUrl.isNotEmpty;
 
     // --- Media Widget Logic ---
     Widget _buildPlaceholderMedia(IconData icon) {
@@ -276,25 +275,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     ),
             ),
 
-            const SizedBox(height: 18),
-
-            // 5. Action Buttons Row (Only Cart needed if not owned)
-            if (!isOwned)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () =>
-                        _handleAddToCart(context, appState, product),
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                    color: Colors.amber,
-                    splashRadius: 24,
-                  ),
-                ],
-              ),
-
-            if (!isOwned) const SizedBox(height: 18),
-
+            const SizedBox(
+              height: 18,
+            ), // Retaining a similar space here for better flow after the main button.
             // 6. Price & Rating
             Row(
               children: [
