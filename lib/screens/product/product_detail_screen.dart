@@ -256,9 +256,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           _handleAddToCart(context, appState, product),
                       icon: const Icon(Icons.shopping_bag, color: Colors.white),
                       label: Text(
-                        product.isFree
-                            ? 'Download Now'
-                            : 'Purchase for ${product.price} T.',
+                        product.isFree ? 'Download Now' : 'Add To Cart',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
