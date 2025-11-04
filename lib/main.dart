@@ -64,39 +64,61 @@ class EduDocApp extends StatelessWidget {
       useMaterial3: true,
     );
 
+    // lib/main.dart
+// ... (keep all your existing code above the lightTheme variable) ...
+
     // --- Light Theme Definition ---
+    // DEFINE THE NEW COLORS
+    const Color lightPrimary = Color(0xFF4F46E5); // Indigo 600 (Strong, professional)
+    const Color lightSecondary = Color(0xFF0D9488); // Teal 600 (Calm, complementary)
+    const Color lightTertiary = Color(0xFFF59E0B); // Amber 600 (Rich highlight for tokens)
+    const Color lightBackground = Color(0xFFF1F5F9); // Blue-Gray 50 (Soft, cool background)
+    const Color lightSurface = Color(0xFFFFFFFF); // White (For cards)
+    const Color lightTextMain = Color(0xFF1E293B); // Blue-Gray 900 (Dark text)
+    const Color lightTextSubtle = Color(0xFF64748B); // Blue-Gray 500 (Subtle text)
+
     final ThemeData lightTheme = ThemeData(
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
-        primary: Color(0xFF4F46E5), // Indigo 600
-        secondary: Color(0xFFEC4899), // Pink 500
-        tertiary: tertiaryColor,
-        surface: Color(0xFFFFFFFF), // Scaffold background
+        primary: lightPrimary,
+        secondary: lightSecondary,
+        tertiary: lightTertiary,
+        surface: lightSurface,
+        onSurface: lightTextMain, // Main text on cards
+        onSurfaceVariant: lightTextSubtle, // Main text on background
       ),
-      scaffoldBackgroundColor: const Color(0xFFF9FAFB),
-      cardColor: const Color(0xFFFFFFFF),
+      scaffoldBackgroundColor: lightBackground,
+      cardColor: lightSurface,
       textTheme: TextTheme(
-        headlineSmall: TextStyle(
+        headlineSmall: const TextStyle(
           fontFamily: 'Montserrat',
           fontWeight: FontWeight.w700,
-          color: Colors.grey.shade900,
+          color: lightTextMain, // Use main text color
         ),
-        titleLarge: TextStyle(
+        titleLarge: const TextStyle(
           fontFamily: 'Montserrat',
           fontWeight: FontWeight.w700,
-          color: Colors.grey.shade900,
+          color: lightTextMain, // Use main text color
         ),
         bodyMedium: const TextStyle(
           fontFamily: 'Inter',
-          color: Color(0xFF111827),
+          color: lightTextMain, // Use main text color
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'Inter',
+          color: lightTextSubtle, // Use subtle text color
+        ),
+        labelLarge: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
         ),
       ),
 
       // --- FIX FOR BOTTOM NAV (LIGHT) ---
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: const Color(0xFFFFFFFF), // A clean white background
-        selectedItemColor: const Color(0xFF4F46E5), // Use the light primary color
-        unselectedItemColor: Colors.grey.shade700, // A visible dark grey
+        backgroundColor: lightSurface, // A clean white background
+        selectedItemColor: lightPrimary, // Use the light primary color
+        unselectedItemColor: lightTextSubtle, // Use the subtle gray
         type: BottomNavigationBarType.fixed, // Ensures all labels are shown
         showUnselectedLabels: true,
       ),
@@ -106,6 +128,7 @@ class EduDocApp extends StatelessWidget {
     );
 
     return MaterialApp(
+      // ... (rest of your MaterialApp remains the same) ...
       title: 'EduDoc Flutter SPA',
       debugShowCheckedModeBanner: false,
       theme: appState.isDarkTheme ? darkTheme : lightTheme,
