@@ -77,20 +77,20 @@ class MainAppScaffold extends StatelessWidget {
               elevation: theme.brightness == Brightness.light ? 1 : 0,
               toolbarHeight: 72,
 
-              // Logo/Title placement
-              title: Row(
-                children: [
-                  Icon(Icons.school, color: theme.colorScheme.tertiary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'EduDoc',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontSize: 24,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
+              // // Logo/Title placement
+              // title: Row(
+              //   children: [
+              //     Icon(Icons.school, color: theme.colorScheme.tertiary),
+              //     const SizedBox(width: 8),
+              //     Text(
+              //       'EduDoc',
+              //       style: theme.textTheme.titleLarge?.copyWith(
+              //         fontSize: 24,
+              //         color: theme.colorScheme.primary,
+              //       ),
+              //     ),
+              //   ],
+              // ),
 
               // Icon Placements using standard 'actions'
               actions: [
