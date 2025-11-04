@@ -9,8 +9,6 @@ import '../screens/auth/permissions_screen.dart'; // <--- FIX: Ensure this class
 import '../screens/auth/signup_screen.dart';
 import '../screens/auth/welcome_screen.dart';
 import '../screens/cart/cart_screen.dart';
-import '../screens/common/about_screen.dart'; // Assuming common path
-import '../screens/common/help_support_screen.dart'; // Assuming common path
 import '../screens/home/home_screen.dart';
 import '../screens/library/bookmarks_screen.dart';
 import '../screens/library/library_screen.dart';
@@ -19,9 +17,6 @@ import '../screens/offers/offers_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/reading_screen.dart';
 import '../screens/profile/activity_screen.dart';
-import '../screens/profile/change_password_screen.dart';
-// --- NEW IMPORTS FOR SETTINGS SUB-SCREENS ---
-import '../screens/profile/email_management_screen.dart';
 import '../screens/profile/profile_edit_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/settings_screen.dart';
@@ -31,7 +26,6 @@ import '../state/app_state.dart';
 import 'custom_widgets/bottom_nav.dart';
 import 'custom_widgets/profile_avatar.dart';
 import 'custom_widgets/wallet_button.dart';
-// ---------------------------------------------
 
 // -----------------------------------------------------
 // FIX 1: MainAppScaffold now conditionally shows the AppBar
@@ -57,8 +51,10 @@ class MainAppScaffold extends StatelessWidget {
     final List<AppScreen> screensWithoutMainAppBar = [
       AppScreen.library,
       AppScreen.bookmarks,
-      AppScreen.cart,
-      AppScreen.profile,
+      AppScreen
+          .cart, // Added to fix the double app bar on the Shopping Cart screen
+      AppScreen
+          .profile, // Added to fix the double app bar on the My Account screen
       AppScreen.wallet,
       AppScreen.settings,
       AppScreen.userActivity,
@@ -66,12 +62,6 @@ class MainAppScaffold extends StatelessWidget {
       AppScreen.offerDetails,
       AppScreen.productDetails,
       AppScreen.search,
-      // --- NEW: Add the deep settings screens here ---
-      AppScreen.emailManagement,
-      AppScreen.changePassword,
-      AppScreen.about,
-      AppScreen.helpSupport,
-      // -----------------------------------------------
     ];
 
     final bool shouldShowMainAppBar = !screensWithoutMainAppBar.contains(
@@ -140,12 +130,6 @@ class MainAppScaffold extends StatelessWidget {
             case AppScreen.userActivity:
             case AppScreen.settings:
             case AppScreen.profileEdit:
-            // --- NEW: Include deep settings screens here for bottom nav control ---
-            case AppScreen.emailManagement:
-            case AppScreen.changePassword:
-            case AppScreen.about:
-            case AppScreen.helpSupport:
-              // --------------------------------------------------------------------
               currentIndex = 3;
               break;
             default:
@@ -183,7 +167,7 @@ class MainAppScaffold extends StatelessWidget {
 
 class MainScreenRouter extends StatelessWidget {
   final Color backupColor;
-  const MainScreenRouter({super.key, required final this.backupColor});
+  const MainScreenRouter({super.key, required this.backupColor});
 
   @override
   Widget build(BuildContext context) {
@@ -206,6 +190,8 @@ class MainScreenRouter extends StatelessWidget {
         showScaffold = false;
         break;
       case AppScreen.permissions:
+        // This line is structurally correct, but the PermissionsScreen class
+        // definition in its own file is likely missing or misspelled.
         currentView = const PermissionsScreen();
         showScaffold = false;
         break;
@@ -262,18 +248,6 @@ class MainScreenRouter extends StatelessWidget {
         return const ProductDetailsScreen();
       case AppScreen.search:
         return const SearchScreen();
-
-      // 👇👇👇 CRITICAL FIX: ADD NEW SCREENS HERE 👇👇👇
-      case AppScreen.emailManagement:
-        return const EmailManagementScreen();
-      case AppScreen.changePassword:
-        return const ChangePasswordScreen();
-      case AppScreen.about:
-        return const AboutScreen();
-      case AppScreen.helpSupport:
-        return const HelpSupportScreen();
-      // 👆👆👆 END CRITICAL FIX 👆👆👆
-
       default:
         return const Center(
           child: Text(
