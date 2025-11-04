@@ -32,16 +32,16 @@ class ProfileAvatar extends StatelessWidget {
             // Fallback if Base64 decoding fails
             avatarWidget = CircleAvatar(
               backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
+              radius: 5,
               child: const Icon(Icons.person, color: Colors.white, size: 16),
-              radius: 16,
             );
           }
         } else {
           // Display default icon placeholder
           avatarWidget = CircleAvatar(
             backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
+            radius: 5,
             child: const Icon(Icons.person, color: Colors.white, size: 16),
-            radius: 16,
           );
         }
 

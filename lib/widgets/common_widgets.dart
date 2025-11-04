@@ -1,6 +1,6 @@
 // FIX: Assume this entire block is the content of common_widgets.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // <--- THIS LINE IS NOW CORRECTED
 import 'package:provider/provider.dart';
 
 import '../screens/auth/lock_screen.dart';
@@ -30,6 +30,9 @@ import 'custom_widgets/wallet_button.dart';
 // -----------------------------------------------------
 // FIX 1: MainAppScaffold now conditionally shows the AppBar
 //        The list of screens that use their own app bar is updated.
+//
+// MODIFIED: ProfileAvatar moved to leading.
+// MODIFIED: Actions reordered: Search -> Wallet -> Settings.
 // -----------------------------------------------------
 
 class MainAppScaffold extends StatelessWidget {
@@ -72,43 +75,53 @@ class MainAppScaffold extends StatelessWidget {
       // Conditionally set the AppBar to null for detail screens
       appBar: shouldShowMainAppBar
           ? AppBar(
-              automaticallyImplyLeading: false,
-              backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
-              elevation: theme.brightness == Brightness.light ? 1 : 0,
-              toolbarHeight: 72,
+        automaticallyImplyLeading: false,
+        backgroundColor: theme.colorScheme.surface.withAlpha(210),
+        elevation: theme.brightness == Brightness.light ? 1 : 0,
+        toolbarHeight: 65,
 
-              // // Logo/Title placement
-              // title: Row(
-              //   children: [
-              //     Icon(Icons.school, color: theme.colorScheme.tertiary),
-              //     const SizedBox(width: 8),
-              //     Text(
-              //       'EduDoc',
-              //       style: theme.textTheme.titleLarge?.copyWith(
-              //         fontSize: 24,
-              //         color: theme.colorScheme.primary,
-              //       ),
-              //     ),
-              //   ],
-              // ),
+        // MODIFICATION: ProfileAvatar moved to 'leading' (left side)
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: ProfileAvatar(
+            onTap: () => appState.navigate(AppScreen.profile),
+          ),
+        ),
 
-              // Icon Placements using standard 'actions'
-              actions: [
-                WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
-                const SizedBox(width: 8),
+        // // Logo/Title placement (Remains commented out from previous request)
+        // title: Row(
+        //   children: [
+        //     Icon(Icons.school, color: theme.colorScheme.tertiary),
+        //     const SizedBox(width: 8),
+        //     Text(
+        //       'EduDoc',
+        //       style: theme.textTheme.titleLarge?.copyWith(
+        //         fontSize: 24,
+        //         color: theme.colorScheme.primary,
+        //       ),
+        //     ),
+        //   ],
+        // ),
 
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () => appState.navigate(AppScreen.search),
-                  color: Colors.grey.shade400,
-                ),
+        // MODIFICATION: Icon Placements reordered and Settings added
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => appState.navigate(AppScreen.search),
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(width: 8),
 
-                ProfileAvatar(
-                  onTap: () => appState.navigate(AppScreen.profile),
-                ),
-                const SizedBox(width: 8),
-              ],
-            )
+          WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
+          const SizedBox(width: 8),
+
+          IconButton(
+            icon: Icon(Icons.settings, color: Colors.grey.shade400),
+            onPressed: () => appState.navigate(AppScreen.settings),
+          ),
+          const SizedBox(width: 8),
+        ],
+      )
           : null, // Set AppBar to null for detail screens
       body: child,
       bottomNavigationBar: Builder(
@@ -190,8 +203,8 @@ class MainScreenRouter extends StatelessWidget {
         showScaffold = false;
         break;
       case AppScreen.permissions:
-        // This line is structurally correct, but the PermissionsScreen class
-        // definition in its own file is likely missing or misspelled.
+      // This line is structurally correct, but the PermissionsScreen class
+      // definition in its own file is likely missing or misspelled.
         currentView = const PermissionsScreen();
         showScaffold = false;
         break;
@@ -208,8 +221,8 @@ class MainScreenRouter extends StatelessWidget {
         showScaffold = false; // Edit screen typically full-screen
         break;
       default:
-        // All other screens will use the MainAppScaffold, but the
-        // MainAppScaffold itself now decides whether to show the AppBar.
+      // All other screens will use the MainAppScaffold, but the
+      // MainAppScaffold itself now decides whether to show the AppBar.
         showScaffold = true;
         currentView = _buildMainAppContent(appState.currentScreen);
         break;
