@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(blue: 2),
         shape: BoxShape.circle,
       ),
       child: IconButton(
@@ -137,8 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: isActive
             ? Theme.of(context).colorScheme.primary
-            : Colors.grey.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(4),
+            : Colors.blueGrey.withValues(blue: 10),
+        borderRadius: BorderRadius.circular(10),
       ),
     );
   }
@@ -311,8 +311,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             : theme.textTheme.bodyMedium?.color,
                       ),
                     ),
-                    color: MaterialStateProperty.resolveWith<Color>((
-                        Set<MaterialState> states,
+                    color: WidgetStateProperty.resolveWith<Color>((
+                        Set<WidgetState> states,
                         ) {
                       if (appState.homeFilter == filter) {
                         return theme.colorScheme.primary;
