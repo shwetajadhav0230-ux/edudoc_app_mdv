@@ -278,9 +278,9 @@ class ProductCard extends StatelessWidget {
               appState.toggleBookmark(product.id);
             },
             child: Icon(
-              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              isBookmarked ? Icons.bookmark_added_rounded : Icons.bookmark_rounded,
               color: isBookmarked
-                  ? Colors.pink.shade400
+                  ? theme.colorScheme.secondary
                   : theme.colorScheme.onSurface.withAlpha(179),
               size: 22,
             ),

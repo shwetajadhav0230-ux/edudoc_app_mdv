@@ -39,34 +39,35 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   // --- Helper to download the PDF and save it locally ---
   Future<void> _downloadAndLoadPdf() async {
     try {
+      final directory = await getTemporaryDirectory();
+      final cleanedTitle = widget.title.replaceAll(RegExp(r'[^\w]'), '_');
+      // Use a stable file name instead of one with a timestamp
+      final localFilePath = '${directory.path}/$cleanedTitle.pdf';
+      final file = File(localFilePath);
+
+      // --- ADD THIS CHECK ---
+      if (await file.exists()) {
+        setState(() {
+          localPath = localFilePath;
+          isLoading = false;
+        });
+        return; // File already exists, no need to download
+      }
+      // --- END CHECK ---
+
+      // If file doesn't exist, proceed with download
       final response = await http.get(Uri.parse(widget.pdfUrl));
       if (response.statusCode == 200) {
-        // Use temporary directory, which is appropriate for ephemeral downloaded files
-        final directory = await getTemporaryDirectory();
-        // Create a unique filename to prevent clashes and ensure file system compatibility
-        final cleanedTitle = widget.title.replaceAll(RegExp(r'[^\w]'), '_');
-        final file = File(
-          '${directory.path}/${cleanedTitle}_${DateTime.now().millisecondsSinceEpoch}.pdf',
-        );
-
         await file.writeAsBytes(response.bodyBytes, flush: true);
-
         setState(() {
           localPath = file.path;
           isLoading = false;
         });
       } else {
-        setState(() {
-          errorMessage =
-              'Failed to load PDF. Server response: ${response.statusCode}';
-          isLoading = false;
-        });
+        // ... (handle error) ...
       }
     } catch (e) {
-      setState(() {
-        errorMessage = 'An error occurred while downloading the PDF: $e';
-        isLoading = false;
-      });
+      // ... (handle error) ...
     }
   }
 
@@ -146,7 +147,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     return PDFView(
       filePath: localPath,
       enableSwipe: true,
-      swipeHorizontal: true,
+      swipeHorizontal:true,
       autoSpacing: true,
       pageFling: false,
       preventLinkNavigation:

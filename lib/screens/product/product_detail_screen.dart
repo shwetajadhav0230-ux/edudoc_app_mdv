@@ -18,47 +18,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
   // --- 1. Functional Helper Methods ---
 
-  Widget _buildBookmarkButton(
-    BuildContext context,
-    Product product,
-    Color secondaryColor,
-  ) {
-    final theme = Theme.of(context);
-    // Removed isDarkTheme calculation as it's not strictly necessary here.
-
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        final isBookmarked = appState.bookmarkedProductIds.contains(product.id);
-
-        return IconButton(
-          onPressed: () {
-            appState.toggleBookmark(product.id);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  isBookmarked
-                      ? '${product.title} removed from Wishlist.'
-                      : '${product.title} added to Wishlist.',
-                ),
-                duration: const Duration(milliseconds: 1000),
-              ),
-            );
-          },
-          icon: Icon(
-            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-            color: isBookmarked ? secondaryColor : theme.colorScheme.onSurface,
-          ),
-          splashRadius: 24,
-        );
-      },
-    );
-  }
 
   void _handleAddToCart(
-    BuildContext context,
-    AppState appState,
-    Product product,
-  ) {
+      BuildContext context,
+      AppState appState,
+      Product product,
+      ) {
     appState.addToCart(product);
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +44,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     final productId = int.tryParse(appState.selectedProductId ?? '') ?? 1;
     final product = dummyProducts.firstWhere(
-      (p) => p.id == productId,
+          (p) => p.id == productId,
       orElse: () => dummyProducts.first,
     );
 
@@ -91,13 +56,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final bool hasCustomImage = product.imageUrl.isNotEmpty;
 
     // --- Media Widget Logic ---
-    Widget _buildPlaceholderMedia(IconData icon) {
+    Widget buildPlaceholderMedia(IconData icon) {
       return Container(
         height: 180,
         decoration: BoxDecoration(
           color: isDarkTheme
               ? const Color(0xFF4C4435)
-              : theme.colorScheme.surfaceVariant,
+              : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,
@@ -111,7 +76,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       );
     }
 
-    Widget mediaWidget = _buildPlaceholderMedia(typeIcon);
+    Widget mediaWidget = buildPlaceholderMedia(typeIcon);
     if (hasCustomImage) {
       mediaWidget = ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -120,7 +85,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           height: 180,
           width: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => _buildPlaceholderMedia(typeIcon),
+          errorBuilder: (c, e, s) => buildPlaceholderMedia(typeIcon),
         ),
       );
     }
@@ -131,7 +96,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         ? product.reviewCount
         : _initialReviewCount;
     final int effectiveReviewsCount =
-        reviewsToDisplayCount > product.reviewCount
+    reviewsToDisplayCount > product.reviewCount
         ? product.reviewCount
         : reviewsToDisplayCount;
     final bool canShowAll = product.reviewCount > _initialReviewCount;
@@ -167,7 +132,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               );
             },
           ),
-          _buildBookmarkButton(context, product, theme.colorScheme.secondary),
+          // _buildBookmarkButton(context, product, theme.colorScheme.secondary),
         ],
       ),
       extendBodyBehindAppBar: true,
@@ -226,52 +191,110 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             const SizedBox(height: 24),
 
             // 4. Main Action Button (Full Width)
-            SizedBox(
+            // --- MODIFICATION START ---
+            // This logic now shows EITHER the "Read" button OR
+            // a Row with "Add to Cart" + "Wishlist"
+            isOwned
+                ? SizedBox( // <-- Keep SizedBox wrapper for 'isOwned' case
               width: double.infinity,
-              child: isOwned
-                  ? ElevatedButton.icon(
-                      onPressed: () => appState.navigate(
-                        AppScreen.reading,
-                        id: product.id.toString(),
-                      ),
-                      icon: const Icon(Icons.menu_book, color: Colors.black),
-                      label: const Text(
-                        'Read Document',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: readButtonColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    )
-                  : ElevatedButton.icon(
-                      onPressed: () =>
-                          _handleAddToCart(context, appState, product),
-                      icon: const Icon(Icons.shopping_bag, color: Colors.white),
-                      label: Text(
-                        product.isFree ? 'Download Now' : 'Add To Cart',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+              child: ElevatedButton.icon(
+                onPressed: () => appState.navigate(
+                  AppScreen.reading,
+                  id: product.id.toString(),
+                ),
+                icon: const Icon(Icons.menu_book, color: Colors.black),
+                label: const Text(
+                  'Read Document',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: readButtonColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            )
+                : Row( // <-- This is the new "else" block
+              children: [
+                // Main cart/download button
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () =>
+                        _handleAddToCart(context, appState, product),
+                    icon: Icon(
+                      product.isFree
+                          ? Icons.download
+                          : Icons.shopping_bag,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      product.isFree ? 'Download Now' : 'Add To Cart',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Secondary Wishlist button
+                // We use Consumer here to update the icon state
+                Consumer<AppState>(
+                  builder: (context, appState, child) {
+                    final isBookmarked =
+                    appState.bookmarkedProductIds.contains(product.id);
+                    return IconButton(
+                      onPressed: () {
+                        appState.toggleBookmark(product.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isBookmarked
+                                  ? '${product.title} removed from Wishlist.'
+                                  : '${product.title} added to Wishlist.',
+                            ),
+                            duration:
+                            const Duration(milliseconds: 1000),
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        isBookmarked
+                            ? Icons.bookmark_added_rounded
+                            : Icons.bookmark_add_rounded,
+                        color: isBookmarked
+                            ? theme.colorScheme.secondary
+                            : theme.colorScheme.onSurface
+                            .withAlpha(179),
+                      ),
+                      style: IconButton.styleFrom(
+                        side: BorderSide(
+                            color: Colors.grey.shade400, width: 1),
+                        padding: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
+            // --- MODIFICATION END ---
 
             const SizedBox(
               height: 18,
@@ -327,22 +350,22 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               children: product.tags
                   .map(
                     (tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: tag == 'STEM' || tag == 'Tech'
-                            ? Colors.teal
-                            : Colors.indigo,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Text(
-                        tag,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  )
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tag == 'STEM' || tag == 'Tech'
+                        ? Colors.teal
+                        : Colors.indigo,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Text(
+                    tag,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              )
                   .toList(),
             ),
 
@@ -363,7 +386,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             Column(
               children: List.generate(
                 effectiveReviewsCount,
-                (index) => Container(
+                    (index) => Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: theme.cardColor.withAlpha(isDarkTheme ? 128 : 255),

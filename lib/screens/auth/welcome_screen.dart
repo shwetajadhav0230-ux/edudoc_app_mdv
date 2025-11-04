@@ -1,83 +1,85 @@
-// Auto-generated screen from main.dart
+// lib/screens/auth/welcome_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../state/app_state.dart';
+import '../../state/app_state.dart'; // Uses your AppState
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context, listen: false);
     final theme = Theme.of(context);
+    // --- MODIFIED: Uses AppState navigation ---
+    final appState = Provider.of<AppState>(context, listen: false);
 
     return Scaffold(
-      body: Center(
+      body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.school, color: theme.colorScheme.tertiary, size: 64),
+              const Spacer(flex: 2),
+              Icon(
+                Icons.school,
+                size: 80,
+                color: theme.colorScheme.primary,
+              ),
               const SizedBox(height: 16),
               Text(
-                'EduDoc',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontSize: 48,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              Text(
-                'Your Premium Notes Marketplace',
-                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 48),
-              const Text(
-                'Discover, purchase, and access high-quality educational documents from verified creators.',
+                'Welcome to EduDoc',
                 textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => appState.navigate(AppScreen.signup),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text(
-                    'Create Account',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+              const SizedBox(height: 8),
+              Text(
+                'Your all-in-one platform for sharing and discovering educational documents.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(flex: 3),
+              ElevatedButton(
+                onPressed: () {
+                  // --- MODIFIED: Uses AppState navigation ---
+                  appState.navigate(AppScreen.signup);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                child: const Text('Create an Account'),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => appState.navigate(AppScreen.login),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey.shade700),
-                  ),
-                  child: Text(
-                    'Login',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: theme.textTheme.bodyMedium?.color,
-                    ),
+              OutlinedButton(
+                onPressed: () {
+                  // --- MODIFIED: Uses AppState navigation ---
+                  appState.navigate(AppScreen.login);
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.primary,
+                  side: BorderSide(color: theme.colorScheme.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                child: const Text('Log In'),
               ),
-              const SizedBox(height: 32),
-              TextButton(
-                onPressed: () => appState.navigate(AppScreen.home),
-                child: Text(
-                  'Skip for Now (Prototype Mode)',
-                  style: TextStyle(color: Colors.grey.shade500),
-                ),
-              ),
+              const Spacer(flex: 1),
             ],
           ),
         ),

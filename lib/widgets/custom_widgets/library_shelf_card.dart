@@ -85,7 +85,7 @@ class LibraryShelfCard extends StatelessWidget {
     }
     // A simple placeholder if no image is available
     return Container(
-      color: theme.colorScheme.surfaceVariant.withAlpha(128),
+      color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
       child: Center(
         child: Icon(
           typeIcon,

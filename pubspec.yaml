@@ -35,15 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.0 # Or the latest stable version
-  flutter_markdown: ^0.6.14 # Use the latest version
-  flutter_math_fork: ^0.7.0 # Use the latest version
-  url_launcher: ^6.1.6 # Use the latest version
-  flutter_pdfview: ^1.2.1 # Use the latest version
-  # File Handling:
-  path_provider: ^2.0.11 # For temporary file storage
-  http: ^0.13.5
-  syncfusion_flutter_pdfviewer: ^21.2.10
-
+  http: ^1.2.0 # Or latest version
+  flutter_pdfview: ^1.3.2 # Or latest version
+  path_provider:
 dev_dependencies:
   flutter_test:
     sdk: flutter
