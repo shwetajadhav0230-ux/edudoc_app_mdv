@@ -1,67 +1,279 @@
-// Auto-generated screen from main.dart
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+// Note: These libraries must be added to your pubspec.yaml for this code to compile.
+// packages required: flutter_pdfview, http, path_provider
+import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+
 import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
 
+// ----------------------------------------------------------------------
+// PDF VIEWER SCREEN (Handles downloading and rendering the PDF)
+// ----------------------------------------------------------------------
+
+class PDFViewerScreen extends StatefulWidget {
+  final String pdfUrl;
+  final String title;
+
+  const PDFViewerScreen({super.key, required this.pdfUrl, required this.title});
+
+  @override
+  State<PDFViewerScreen> createState() => _PDFViewerScreenState();
+}
+
+class _PDFViewerScreenState extends State<PDFViewerScreen> {
+  String? localPath;
+  bool isLoading = true;
+  String? errorMessage;
+
+  // PDFView controller properties
+  int _pages = 0;
+  int _currentPage = 0;
+  // ignore: unused_field
+  PDFViewController? _pdfViewController;
+
+  // --- Helper to download the PDF and save it locally ---
+  Future<void> _downloadAndLoadPdf() async {
+    try {
+      final response = await http.get(Uri.parse(widget.pdfUrl));
+      if (response.statusCode == 200) {
+        // Use temporary directory, which is appropriate for ephemeral downloaded files
+        final directory = await getTemporaryDirectory();
+        // Create a unique filename to prevent clashes and ensure file system compatibility
+        final cleanedTitle = widget.title.replaceAll(RegExp(r'[^\w]'), '_');
+        final file = File(
+          '${directory.path}/${cleanedTitle}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        );
+
+        await file.writeAsBytes(response.bodyBytes, flush: true);
+
+        setState(() {
+          localPath = file.path;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage =
+              'Failed to load PDF. Server response: ${response.statusCode}';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'An error occurred while downloading the PDF: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _downloadAndLoadPdf();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkTheme = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        actions: _pages > 0
+            ? [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      '${_currentPage + 1} / $_pages',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                ),
+              ]
+            : null,
+      ),
+      body: _buildBody(isDarkTheme),
+    );
+  }
+
+  Widget _buildBody(bool isDarkTheme) {
+    if (isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Downloading and loading PDF from network...',
+              style: TextStyle(
+                color: isDarkTheme ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    if (localPath == null) {
+      return const Center(
+        child: Text('File path is null.', style: TextStyle(color: Colors.red)),
+      );
+    }
+
+    // --- PDF Rendering Widget ---
+    return PDFView(
+      filePath: localPath,
+      enableSwipe: true,
+      swipeHorizontal: true,
+      autoSpacing: true,
+      pageFling: false,
+      preventLinkNavigation:
+          false, // <-- Allows hyperlinks within PDFs to open in a browser
+      onRender: (pages) {
+        setState(() {
+          _pages = pages ?? 0;
+        });
+      },
+      onViewCreated: (controller) {
+        _pdfViewController = controller;
+      },
+      onPageChanged: (page, total) {
+        setState(() {
+          _currentPage = page ?? 0;
+        });
+      },
+      onError: (error) {
+        setState(() {
+          errorMessage = 'Error displaying PDF: $error';
+        });
+        print('PDFView Error: $error');
+      },
+      onPageError: (page, error) {
+        setState(() {
+          errorMessage = 'Error on page $page: $error';
+        });
+        print('PDFView Page Error: $page - $error');
+      },
+    );
+  }
+}
+
+// ----------------------------------------------------------------------
+// READING SCREEN (Now acts as the PDF List Screen)
+// ----------------------------------------------------------------------
 
 class ReadingScreen extends StatelessWidget {
   const ReadingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-    final productId = int.tryParse(appState.selectedProductId ?? '') ?? 1;
-    final product = dummyProducts.firstWhere(
-      (p) => p.id == productId,
-      orElse: () => dummyProducts.first,
-    );
+    // Filter dummyProducts to only show products with a valid PDF link
+    // This retrieves the data from the imported mock_data.dart file.
+    final List<Map<String, String?>> pdfDocuments = dummyProducts
+        .where((p) => p.pdfUrl != null)
+        .map((p) => {'title': p.title, 'author': p.author, 'pdfUrl': p.pdfUrl})
+        .toList();
 
-    // This simulates the E-Reader by showing the content property
+    final appState = Provider.of<AppState>(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: appState.navigateBack,
         ),
-        title: Text(product.title, style: const TextStyle(color: Colors.white)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.volume_up, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              product.title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Removed unnecessary backslash stripping from the Raw String content
-            Text(
-              product.content.replaceAll('## ', '\n\nCHAPTER: '),
-              style: const TextStyle(fontSize: 16, height: 1.5),
-            ),
-            const SizedBox(height: 50),
-            if (product.pdfUrl != null)
-              Center(
-                child: Text(
-                  'PDF Viewer Placeholder. Link: ${product.pdfUrl}',
-                  style: TextStyle(color: Colors.grey.shade500),
-                ),
-              ),
-          ],
+        title: const Text(
+          'Available PDF Documents',
+          style: TextStyle(color: Colors.white),
         ),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: Colors.white,
       ),
+      body: pdfDocuments.isEmpty
+          ? const Center(
+              child: Text(
+                'No PDF documents with valid URLs are available.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              itemCount: pdfDocuments.length,
+              itemBuilder: (context, index) {
+                final doc = pdfDocuments[index];
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 4.0,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.picture_as_pdf,
+                      color: theme.colorScheme.secondary,
+                      size: 30,
+                    ),
+                    title: Text(
+                      doc['title'] ?? 'Untitled Document',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text('By: ${doc['author'] ?? 'Unknown'}'),
+                    trailing: const Icon(
+                      Icons.open_in_new,
+                      size: 24,
+                      color: Colors.blueGrey,
+                    ),
+                    onTap: () {
+                      if (doc['pdfUrl'] != null) {
+                        // Navigate to the PDF viewer screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PDFViewerScreen(
+                              pdfUrl: doc['pdfUrl']!,
+                              title: doc['title'] ?? 'PDF Document',
+                            ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('PDF link is missing.')),
+                        );
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
     );
   }
 }
