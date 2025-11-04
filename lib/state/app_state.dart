@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 
+import '../data/mock_data.dart' as mock_data;
 import '../models/product.dart';
+import '../models/transaction.dart';
 import '../models/user.dart';
-import '../models/transaction.dart'; // <-- 1. IMPORT Transaction
-import '../data/mock_data.dart' as mock_data; // <-- 2. IMPORT mock data with prefix
 
 // Note: Assuming Offer model is available in the scope of AppState
 
@@ -31,6 +31,11 @@ enum AppScreen {
   reading,
   // NEW: Profile Edit Screen
   profileEdit,
+  // --- NEW SETTINGS DESTINATIONS ---
+  emailManagement, // Added for Email Address settings
+  changePassword, // Added for Change Password settings
+  about, // Added for About EduDoc
+  helpSupport, // Added for Help & Support
 }
 
 class AppState extends ChangeNotifier {
@@ -42,15 +47,17 @@ class AppState extends ChangeNotifier {
   String? _selectedProductId;
   String? _selectedOfferId;
 
+  // --- NEW: Settings State Variables ---
+  bool _isBiometricEnabled = false; // Initialize to false
+  bool _areNotificationsEnabled = true; // Initialize to true
+  bool _isPromoEmailEnabled = false; // Initialize to false
+
   // --- 3. ADD TRANSACTION HISTORY TO STATE ---
-  // Initialize the list from the mock data, using .toList() to make it
-  // a new, growable (mutable) list.
-  final List<Transaction> _transactionHistory =
-  mock_data.transactionHistory.toList();
+  final List<Transaction> _transactionHistory = mock_data.transactionHistory
+      .toList();
 
   // --- User/Profile State ---
   int _walletTokens = 450;
-  // ENSURED NON-NULLABLE INITIALIZATION:
   final List<Product> _cartItems = [];
   final List<int> _bookmarkedProductIds = [1, 6];
   final List<int> _ownedProductIds = [101, 102]; // Library/Purchased items
@@ -94,6 +101,11 @@ class AppState extends ChangeNotifier {
   // --- 4. ADD GETTER FOR THE TRANSACTION LIST ---
   List<Transaction> get transactionHistory => _transactionHistory;
 
+  // --- NEW: Settings Getters ---
+  bool get isBiometricEnabled => _isBiometricEnabled;
+  bool get areNotificationsEnabled => _areNotificationsEnabled;
+  bool get isPromoEmailEnabled => _isPromoEmailEnabled;
+
   // FIX: Auth/Lock Screen Getters
   String get pinCode => _pinCode;
   bool get showPasswordUnlock => _showPasswordUnlock;
@@ -108,7 +120,7 @@ class AppState extends ChangeNotifier {
     }
     _currentScreen = screen;
     _selectedProductId =
-    (screen == AppScreen.productDetails || screen == AppScreen.reading)
+        (screen == AppScreen.productDetails || screen == AppScreen.reading)
         ? id
         : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
@@ -119,13 +131,20 @@ class AppState extends ChangeNotifier {
     if (_currentScreen == AppScreen.reading) {
       navigate(_previousPage);
     } else if (_currentScreen == AppScreen.productDetails ||
-        _currentScreen == AppScreen.offerDetails) {
+        _currentScreen == AppScreen.offerDetails ||
+        // --- NEW: Go back from deep settings screens ---
+        _currentScreen == AppScreen.emailManagement ||
+        _currentScreen == AppScreen.changePassword ||
+        _currentScreen == AppScreen.about ||
+        _currentScreen == AppScreen.helpSupport) {
+      // If coming from a deep settings link, go back to settings screen first.
+      if (_currentScreen != AppScreen.settings) {
+        navigate(AppScreen.settings);
+        return;
+      }
       navigate(_previousPage);
     } else if (_currentScreen == AppScreen.profileEdit ||
-        _currentScreen ==
-            AppScreen
-                .library // Library navigation back
-    ) {
+        _currentScreen == AppScreen.library) {
       navigate(AppScreen.home);
     } else {
       navigate(AppScreen.home);
@@ -207,6 +226,29 @@ class AppState extends ChangeNotifier {
         _currentScreen == AppScreen.userActivity) {
       navigate(AppScreen.home);
     }
+    notifyListeners();
+  }
+
+  // --- NEW: Settings Toggles Implementation ---
+
+  /// Toggles the state of biometric login (Fingerprint/Face ID).
+  void toggleBiometrics(bool newValue) {
+    _isBiometricEnabled = newValue;
+    // In a real app, you would interact with a local auth service here
+    notifyListeners();
+  }
+
+  /// Toggles all main application notifications.
+  void toggleAppNotifications(bool newValue) {
+    _areNotificationsEnabled = newValue;
+    // You might also update _isPromoEmailEnabled here depending on requirements
+    notifyListeners();
+  }
+
+  /// Toggles promotional email subscription status.
+  void togglePromoEmails(bool newValue) {
+    _isPromoEmailEnabled = newValue;
+    // In a real app, this would likely trigger an API call to update the user's preference
     notifyListeners();
   }
 
