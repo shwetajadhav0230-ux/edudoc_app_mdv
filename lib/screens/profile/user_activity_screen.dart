@@ -1,8 +1,10 @@
-// Auto-generated screen from main.dart
+// lib/screens/profile/user_activity_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // <-- ADDED
+import '../../state/app_state.dart'; // <-- ADDED
 
-import '../../data/mock_data.dart';
+// import '../../data/mock_data.dart'; // <-- REMOVED
 
 // --- MODIFIED: Converted to StatefulWidget ---
 class UserActivityScreen extends StatefulWidget {
@@ -18,12 +20,14 @@ class _UserActivityScreenState extends State<UserActivityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // --- MODIFICATION ---
+    final appState = Provider.of<AppState>(context); // <-- Get AppState
     final theme = Theme.of(context);
     // Define backupColor locally
     final Color backupColor = const Color(0xFF14B8A6);
 
-    // --- MODIFIED: Filter logic now uses the _activeFilter state ---
-    final userActivity = transactionHistory.where((tx) {
+    // --- MODIFICATION ---
+    final userActivity = appState.transactionHistory.where((tx) { // <-- Read from appState
       if (_activeFilter == 'All') {
         return tx.type == 'Debit' || tx.type == 'Download';
       }

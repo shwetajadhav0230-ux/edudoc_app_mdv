@@ -1,7 +1,9 @@
+// lib/screens/wallet/wallet_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/mock_data.dart';
+// import '../../data/mock_data.dart'; // <-- REMOVED this import
 import '../../state/app_state.dart';
 import '../../widgets/custom_widgets/buy_tokens_modal.dart' show BuyTokensModal;
 // NOTE: Assuming BuyTokensModal is imported/accessible
@@ -114,7 +116,8 @@ class WalletScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Column(
-            children: transactionHistory
+            // --- MODIFICATION ---
+            children: appState.transactionHistory // <-- Changed to read from appState
                 .map(
                   (tx) => Card(
                 child: ListTile(

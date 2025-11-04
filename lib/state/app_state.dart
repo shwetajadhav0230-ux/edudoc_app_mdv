@@ -1,9 +1,12 @@
-// Auto-generated AppState
+// lib/state/app_state.dart
 
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
-import '../models/user.dart'; // Import the new User model
+import '../models/user.dart';
+import '../models/transaction.dart'; // <-- 1. IMPORT Transaction
+import '../data/mock_data.dart' as mock_data; // <-- 2. IMPORT mock data with prefix
+
 // Note: Assuming Offer model is available in the scope of AppState
 
 enum AppScreen {
@@ -32,12 +35,18 @@ enum AppScreen {
 
 class AppState extends ChangeNotifier {
   // --- Global State ---
-  AppScreen _currentScreen = AppScreen.home;
+  AppScreen _currentScreen = AppScreen.welcome;
   AppScreen _previousPage = AppScreen.home;
-  String _userRole = 'Admin';
+  String _userRole = 'user';
   bool _isDarkTheme = true;
   String? _selectedProductId;
   String? _selectedOfferId;
+
+  // --- 3. ADD TRANSACTION HISTORY TO STATE ---
+  // Initialize the list from the mock data, using .toList() to make it
+  // a new, growable (mutable) list.
+  final List<Transaction> _transactionHistory =
+  mock_data.transactionHistory.toList();
 
   // --- User/Profile State ---
   int _walletTokens = 450;
@@ -82,6 +91,9 @@ class AppState extends ChangeNotifier {
   String get homeFilter => _homeFilter;
   int get homeCurrentPage => _homeCurrentPage;
 
+  // --- 4. ADD GETTER FOR THE TRANSACTION LIST ---
+  List<Transaction> get transactionHistory => _transactionHistory;
+
   // FIX: Auth/Lock Screen Getters
   String get pinCode => _pinCode;
   bool get showPasswordUnlock => _showPasswordUnlock;
@@ -96,7 +108,7 @@ class AppState extends ChangeNotifier {
     }
     _currentScreen = screen;
     _selectedProductId =
-        (screen == AppScreen.productDetails || screen == AppScreen.reading)
+    (screen == AppScreen.productDetails || screen == AppScreen.reading)
         ? id
         : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
@@ -113,7 +125,7 @@ class AppState extends ChangeNotifier {
         _currentScreen ==
             AppScreen
                 .library // Library navigation back
-                ) {
+    ) {
       navigate(AppScreen.home);
     } else {
       navigate(AppScreen.home);
@@ -200,7 +212,10 @@ class AppState extends ChangeNotifier {
 
   // --- Cart/Wallet/Bookmark Logic ---
   void addToCart(Product product) {
-    if (product.isFree) return;
+    // --- THIS IS THE FIX ---
+    // The "if (product.isFree) return;" line has been removed.
+    // This allows free items to be added to the cart so they can be
+    // processed during checkout to create a "Download" history.
     if (_cartItems.any((item) => item.id == product.id)) return;
     _cartItems.add(product);
     notifyListeners();
@@ -270,23 +285,58 @@ class AppState extends ChangeNotifier {
   }
 
   void buyTokens(int amount) {
+    // --- 5. MODIFY 'buyTokens' ---
     _walletTokens += amount;
-    // Assuming transactionHistory handling is done via side effect
+
+    // Create a new transaction object
+    final newTx = Transaction(
+      id: DateTime.now().millisecondsSinceEpoch, // Unique ID
+      type: 'Credit',
+      amount: amount,
+      date: 'Nov 4, 2025', // Using a mock date
+      description: 'Package purchase',
+    );
+
+    // Add it to the list (at the top)
+    _transactionHistory.insert(0, newTx);
+
     notifyListeners();
   }
 
   // FIX: Checkout now adds purchased items to the *Library* list (`_ownedProductIds`)
   void checkout() {
+    // --- 6. MODIFY 'checkout' ---
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
-    if (totalCost > _walletTokens) return;
+    // MODIFIED: Check if cart is empty after checking cost
+    if (totalCost > _walletTokens || _cartItems.isEmpty) return;
 
     _walletTokens -= totalCost;
+
     for (var item in _cartItems) {
       // Logic: Only add purchased products to the library (ownedProductIds)
-      if (!_ownedProductIds.contains(item.id)) {
+      // (Don't add subscriptions/bundles to the library)
+      if (!item.isFree &&
+          item.type != 'Subscription' &&
+          item.type != 'Bundle' &&
+          !_ownedProductIds.contains(item.id)) {
         _ownedProductIds.add(item.id);
       }
+
+      // Create a transaction for this purchase/download
+      final newTx = Transaction(
+        id: DateTime.now().millisecondsSinceEpoch + item.id, // Unique ID
+        type: item.isFree ? 'Download' : 'Debit',
+        amount: item.price,
+        date: 'Nov 4, 2025', // Using a mock date
+        description: item.isFree
+            ? 'Downloaded ${item.title}'
+            : 'Purchased ${item.title}',
+      );
+
+      // Add it to the list (at the top)
+      _transactionHistory.insert(0, newTx);
     }
+
     _cartItems.clear();
     notifyListeners();
   }
