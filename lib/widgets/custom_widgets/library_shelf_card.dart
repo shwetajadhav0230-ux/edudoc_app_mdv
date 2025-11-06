@@ -17,7 +17,8 @@ class LibraryShelfCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => appState.navigate(
-        AppScreen.reading,
+        // FIX: Changed from AppScreen.reading to AppScreen.productDetails as requested.
+        AppScreen.productDetails,
         id: product.id.toString(),
       ),
       child: Column(

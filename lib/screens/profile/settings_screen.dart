@@ -17,20 +17,21 @@ class SettingsScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
-    // Navigation function from the original code
-    final VoidCallback navigateBack = () {
-      try {
-        Navigator.of(context).pop();
-      } catch (e) {
-        appState.navigate(AppScreen.profile);
-      }
-    };
+    // // Navigation function from the original code
+    // final VoidCallback navigateBack = () {
+    //   try {
+    //     Navigator.of(context).pop();
+    //   } catch (e) {
+    //     appState.navigate(AppScreen.profile);
+    //   }
+    // };
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: navigateBack,
+          // FIX: Use the AppState navigation helper directly
+          onPressed: () => appState.navigateBack(),
         ),
         title: Text('App Settings', style: theme.textTheme.titleLarge),
         elevation: 0,

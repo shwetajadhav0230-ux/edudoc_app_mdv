@@ -129,13 +129,33 @@ class WalletScreen extends StatelessWidget {
                   ),
                   title: Text(tx.description),
                   subtitle: Text(tx.date),
-                  trailing: Text(
-                    '${tx.type == 'Credit' ? '+' : '-'}${tx.amount} T.',
-                    style: TextStyle(
-                      color: tx.type == 'Credit' ? backupColor : Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  // START MODIFICATION: Use Row for price and button
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${tx.type == 'Credit' ? '+' : '-'}${tx.amount} T.',
+                        style: TextStyle(
+                          color: tx.type == 'Credit' ? backupColor : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      // Only show rebuy button for token purchases
+                      if (tx.type == 'Credit')
+                        IconButton(
+                          icon: Icon(Icons.refresh, color: theme.colorScheme.primary, size: 20),
+                          tooltip: 'Rebuy Tokens',
+                          onPressed: () {
+                            // Opens the standard token purchase modal
+                            showDialog(
+                              context: context,
+                              builder: (context) => const BuyTokensModal(),
+                            );
+                          },
+                        ),
+                    ],
                   ),
+                  // END MODIFICATION
                 ),
               ),
             )

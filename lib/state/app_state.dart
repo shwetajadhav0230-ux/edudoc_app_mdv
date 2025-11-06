@@ -120,7 +120,7 @@ class AppState extends ChangeNotifier {
     }
     _currentScreen = screen;
     _selectedProductId =
-        (screen == AppScreen.productDetails || screen == AppScreen.reading)
+    (screen == AppScreen.productDetails || screen == AppScreen.reading)
         ? id
         : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
@@ -128,27 +128,42 @@ class AppState extends ChangeNotifier {
   }
 
   void navigateBack() {
-    if (_currentScreen == AppScreen.reading) {
-      navigate(_previousPage);
-    } else if (_currentScreen == AppScreen.productDetails ||
-        _currentScreen == AppScreen.offerDetails ||
-        // --- NEW: Go back from deep settings screens ---
-        _currentScreen == AppScreen.emailManagement ||
+    // 1. Deep Settings Screens: always go back to AppScreen.settings
+    if (_currentScreen == AppScreen.emailManagement ||
         _currentScreen == AppScreen.changePassword ||
         _currentScreen == AppScreen.about ||
         _currentScreen == AppScreen.helpSupport) {
-      // If coming from a deep settings link, go back to settings screen first.
-      if (_currentScreen != AppScreen.settings) {
-        navigate(AppScreen.settings);
-        return;
-      }
-      navigate(_previousPage);
-    } else if (_currentScreen == AppScreen.profileEdit ||
-        _currentScreen == AppScreen.library) {
-      navigate(AppScreen.home);
-    } else {
-      navigate(AppScreen.home);
+      navigate(AppScreen.settings);
+      return;
     }
+
+    // 2. Secondary Screens (opened from home/profile) that go back to previous page
+    // This is the group for screens like Settings, Wallet, Search, etc., which
+    // should respect the previous screen (e.g., Profile).
+    if (_currentScreen == AppScreen.reading ||
+        _currentScreen == AppScreen.productDetails ||
+        _currentScreen == AppScreen.offerDetails ||
+        _currentScreen == AppScreen.settings ||
+        _currentScreen == AppScreen.userActivity ||
+        _currentScreen == AppScreen.wallet ||
+        _currentScreen == AppScreen.search) {
+      navigate(_previousPage);
+      return;
+    }
+
+    // 3. Top-level screens/tabs that go back to Home (or the initial welcome flow)
+    if (_currentScreen == AppScreen.profileEdit ||
+        _currentScreen == AppScreen.library ||
+        _currentScreen == AppScreen.cart ||
+        _currentScreen == AppScreen.profile ||
+        _currentScreen == AppScreen.bookmarks ||
+        _currentScreen == AppScreen.offers) {
+      navigate(AppScreen.home);
+      return;
+    }
+
+    // 4. Default fallback (e.g., from Home, Welcome, Auth Screens)
+    navigate(AppScreen.home);
   }
 
   // --- Image Processing Flag ---
