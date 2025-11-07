@@ -142,13 +142,15 @@ class ProfileScreen extends StatelessWidget {
                     onTap: () => appState.navigate(AppScreen.userActivity),
                   ),
 
-                  // Retained: App Settings
+                  // --- REMOVED: App Settings (as requested) ---
+                  /*
                   ListTile(
                     leading: Icon(Icons.settings, color: Colors.grey),
                     title: const Text('App Settings'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => appState.navigate(AppScreen.settings),
                   ),
+                  */
                 ],
               ),
             ),
