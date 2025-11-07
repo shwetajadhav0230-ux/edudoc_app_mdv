@@ -30,7 +30,7 @@ import 'custom_widgets/wallet_button.dart';
 // -----------------------------------------------------
 // FIX 1: MainAppScaffold now conditionally shows the AppBar
 //
-// MODIFIED: 'title' property in AppBar set to null to remove 'EduDoc'.
+// MODIFIED: ProfileAvatar sizing fixed in actions.
 // -----------------------------------------------------
 
 class MainAppScaffold extends StatelessWidget {
@@ -78,24 +78,22 @@ class MainAppScaffold extends StatelessWidget {
               elevation: theme.brightness == Brightness.light ? 1 : 0,
               toolbarHeight: 65,
 
-              leading: null, // No leading widget
-              // MODIFICATION: Title is now null, removing the 'EduDoc' text.
-              title: null,
+              leading: null, // No leading widget as per previous modification
 
-              // Previous 'title' that was commented out:
-              // title: Row(
-              //   children: [
-              //     Icon(Icons.school, color: theme.colorScheme.tertiary),
-              //     const SizedBox(width: 8),
-              //     Text(
-              //       'EduDoc',
-              //       style: theme.textTheme.titleLarge?.copyWith(
-              //         fontSize: 24,
-              //         color: theme.colorScheme.primary,
-              //       ),
-              //     ),
-              //   ],
-              // ),
+              title: Row(
+                children: [
+                  Icon(Icons.school, color: theme.colorScheme.tertiary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'EduDoc',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: 24,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+
               actions: [
                 IconButton(
                   icon: const Icon(Icons.search),
@@ -107,12 +105,12 @@ class MainAppScaffold extends StatelessWidget {
                 WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
                 const SizedBox(width: 8),
 
-                // Profile Avatar with fixed sizing
+                // FIX: ProfileAvatar sizing fixed by wrapping it in a SizedBox
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: SizedBox(
-                    width: 40,
-                    height: 40,
+                    width: 40, // Adjust width as needed
+                    height: 40, // Adjust height as needed
                     child: ProfileAvatar(
                       onTap: () => appState.navigate(AppScreen.profile),
                     ),
@@ -174,7 +172,7 @@ class MainAppScaffold extends StatelessWidget {
 }
 
 // -----------------------------------------------------
-// FIX 2: MainScreenRouter remains unchanged
+// FIX 2: MainScreenRouter now correctly references MainAppScaffold
 // -----------------------------------------------------
 
 class MainScreenRouter extends StatelessWidget {
