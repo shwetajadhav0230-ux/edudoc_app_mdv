@@ -4,19 +4,13 @@ import '../models/offer.dart';
 import '../models/product.dart';
 import '../models/transaction.dart';
 
-// --- Reliable Dummy PDF Links ---
-// NOTE: These links are necessary for the PDF Viewer to function correctly.
-const String adobeDummyPdf =
-    'https://www.adobe.com/support/products/enterprise/knowledgebase/pdfs/pdflyf_sample_local.pdf';
-const String smallDummyPdf =
-    'http://www.africau.edu/images/default/sample.pdf'; // A very small, reliable sample
-
-// --- AI Course Brochure Link (Using your previous valid link) ---
-const String aiCourseBrochurePdf =
-    'https://www.halvorsen.blog/documents/tutorials/resources/ASP.NET%20and%20Web%20Programming.pdf';
+// --- LOCAL ASSET PDF PATHS ---
+const String samplePdf1 = 'pdfs/sample1.pdf';
+const String samplePdf2 = 'assets/pdfs/sample2.pdf';
+const String samplePdf3 = 'assets/pdfs/sample3.pdf';
+const String samplePdf4 = 'assets/pdfs/sample4.pdf';
 
 final List<Product> dummyProducts = [
-  // FIX: Converted content string to RAW String literal (r'...') to properly handle LaTeX characters ($ and \).
   Product(
     id: 1,
     type: 'Notes',
@@ -31,13 +25,11 @@ final List<Product> dummyProducts = [
     author: 'Dr. Emily Carter',
     pages: 45,
     reviewCount: 88,
-    // CLEANED: Only one instance of imageUrl is used
-    imageUrl:
-        'https://picsum.photos/seed/calculus/300/200', // Changed seed slightly for variety
+    imageUrl: 'https://picsum.photos/seed/calculus/300/200',
     details:
         'In-depth guide to Calculus I, focusing on integration techniques and fundamental theorem applications.',
-    pdfUrl: 'https://www.orimi.com/pdf-test.pdf',
-    content: '', // <-- Working Adobe Dummy PDF
+    pdfUrl: samplePdf1, // ✅ Local Asset
+    content: 'Comprehensive guide to Calculus I integrals and applications.',
   ),
   Product(
     id: 2,
@@ -52,13 +44,12 @@ final List<Product> dummyProducts = [
     author: 'Prof. David Lee',
     pages: 300,
     reviewCount: 42,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/ww2/300/200',
     details:
         'Rich, multimedia-ready eBook detailing the major events, political dynamics, and geographical shifts of World War II.',
     content:
         '## Prelude to War\nThe 1930s saw the rapid rise of totalitarian regimes in Germany and Japan. The failure of the League of Nations was a major factor.\n\n### The Eastern Front\nThe battle for Stalingrad (1942-1943) is considered the turning point, halting the German advance.',
-    pdfUrl: adobeDummyPdf, // <-- Working Adobe Dummy PDF
+    pdfUrl: samplePdf2, // ✅ Local Asset
   ),
   Product(
     id: 3,
@@ -73,13 +64,12 @@ final List<Product> dummyProducts = [
     author: 'Wellness Hub',
     pages: 30,
     reviewCount: 150,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/wellness/300/200',
     details:
         'Guided prompts designed to improve mental clarity, reduce stress, and foster a positive mindset.',
     content:
         '## Day 1: Grounding\n**Morning Prompt**: List three sensory details you notice right now. **Evening Reflection**: What is one small success you achieved today?',
-    pdfUrl: smallDummyPdf, // <-- UPDATED from null to smallDummyPdf
+    pdfUrl: samplePdf1,
   ),
   Product(
     id: 4,
@@ -95,22 +85,20 @@ final List<Product> dummyProducts = [
     author: 'Code Master',
     pages: 62,
     reviewCount: 71,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/react/300/200',
     details:
         'For developers who already know React basics. Covers useState, useEffect, useMemo, useCallback, and creating reusable custom hooks for enterprise applications.',
     content:
         '## Custom Hooks\nCustom hooks are reusable functions for sharing stateful logic. Example: `useToggle` manages boolean state.',
-    pdfUrl: smallDummyPdf, // <-- Working Small Dummy PDF
+    pdfUrl: samplePdf3,
   ),
-  // --- NEW AI/ML COURSE ENTRIES ---
   Product(
     id: 9,
     type: 'Course',
     title: 'Advanced ML & Deep Learning',
     description:
         '9-month Post Graduate Program in Machine Learning and Deep Learning, perfect for career transition.',
-    price: 1500, // Higher price for a course
+    price: 1500,
     isFree: false,
     category: 'Tech',
     tags: ['AI', 'Premium', 'Deep Learning'],
@@ -123,7 +111,7 @@ final List<Product> dummyProducts = [
         'Covers Python, TensorFlow, PyTorch, CNNs, RNNs, and focuses on real-world projects in Computer Vision and NLP.',
     content:
         '## The Deep Learning Revolution\nDeep Learning (DL) uses neural networks with many layers to model complex non-linear relationships. Key libraries are TensorFlow and PyTorch.',
-    pdfUrl: aiCourseBrochurePdf, // <-- Uses the link provided by the user
+    pdfUrl: samplePdf4,
   ),
   Product(
     id: 10,
@@ -144,7 +132,7 @@ final List<Product> dummyProducts = [
         'A practical, hands-on course designed for beginners. Covers NumPy, Pandas, Scikit-learn, and the basics of Supervised and Unsupervised Learning.',
     content:
         '## Essential AI Toolkit\nPython is the primary language for AI/ML. Libraries like Pandas for data manipulation and Scikit-learn for model building are crucial.',
-    pdfUrl: adobeDummyPdf, // <-- Uses a reliable dummy PDF link
+    pdfUrl: samplePdf2,
   ),
   Product(
     id: 11,
@@ -164,9 +152,8 @@ final List<Product> dummyProducts = [
         'An introductory overview of the latest Generative AI models, including how Large Language Models (LLMs) and diffusion models work.',
     content:
         '## The Transformer Architecture\nThe self-attention mechanism is the core innovation of the Transformer model, allowing it to weigh the importance of different words in a sequence.',
-    pdfUrl: smallDummyPdf, // <-- Uses a reliable small PDF link
+    pdfUrl: samplePdf1,
   ),
-  // --- EXISTING PRODUCTS CONTINUED ---
   Product(
     id: 5,
     type: 'Notes',
@@ -181,13 +168,12 @@ final List<Product> dummyProducts = [
     author: 'The Econ Tutor',
     pages: 35,
     reviewCount: 20,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/econ/300/200',
     details:
         'A clearly articulated introduction to core Microeconomics principles. Designed to supplement introductory college lectures.',
     content:
         r'## The Law of Demand\nAs the price of a good or service increases, the quantity demanded decreases ($P \uparrow \implies Q_d \downarrow$). This inverse relationship is fundamental.',
-    pdfUrl: smallDummyPdf, // <-- UPDATED from null to smallDummyPdf
+    pdfUrl: samplePdf3,
   ),
   Product(
     id: 6,
@@ -202,13 +188,12 @@ final List<Product> dummyProducts = [
     author: 'Clara Vane',
     pages: 200,
     reviewCount: 105,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/design/300/200',
     details:
         'An inspiring book exploring how less can be more in digital and physical design. Features interviews with leading designers and practical tips.',
     content:
         '## Principle 3: Intentional White Space\nWhite space (or negative space) is not merely empty area; it is a critical design element that enhances readability and visual hierarchy.',
-    pdfUrl: adobeDummyPdf, // <-- Working Adobe Dummy PDF
+    pdfUrl: samplePdf4,
   ),
   Product(
     id: 7,
@@ -224,13 +209,12 @@ final List<Product> dummyProducts = [
     author: 'Code Master',
     pages: 75,
     reviewCount: 55,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/algo/300/200',
     details:
         'A rigorous set of notes focused on preparing for technical interviews. Includes complexity analysis and common interview questions.',
     content:
         '## Binary Search Trees (BST)\nA node-based binary tree data structure where the left subtree has keys < parent key and the right subtree has keys > parent key.',
-    pdfUrl: smallDummyPdf, // <-- Working Small Dummy PDF
+    pdfUrl: samplePdf2,
   ),
   Product(
     id: 8,
@@ -246,13 +230,12 @@ final List<Product> dummyProducts = [
     author: 'AstroKid',
     pages: 20,
     reviewCount: 95,
-    // CLEANED: Only one instance of imageUrl is used
     imageUrl: 'https://picsum.photos/seed/space/300/200',
     details:
         'A fun and fact-filled summary of our solar system, perfect for middle school students or anyone interested in astronomy.',
     content:
         r'## The Inner Planets\nMercury, Venus, Earth, and Mars are the four inner, terrestrial planets. Venus is the hottest due to its dense $\text{CO}_2$ atmosphere causing a runaway greenhouse effect.',
-    pdfUrl: null, // Still null as it's free/simple content
+    pdfUrl: null,
   ),
 ];
 
@@ -272,7 +255,7 @@ final List<Offer> dummyOffers = [
     discount: '20%',
     duration: 'Permanent',
     status: 'Active',
-    productIds: [4, 7, 9, 10], // Added new AI product IDs
+    productIds: [4, 7, 9, 10],
     tokenPrice: 130,
   ),
   Offer(
