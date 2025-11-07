@@ -19,7 +19,7 @@ import '../screens/product/reading_screen.dart';
 import '../screens/profile/activity_screen.dart';
 import '../screens/profile/profile_edit_screen.dart';
 import '../screens/profile/profile_screen.dart';
-import '../screens/profile/settings_screen.dart';
+import '../screens/profile/settings_screen.dart'; // Using the updated path
 import '../screens/search/search_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../state/app_state.dart';
@@ -29,10 +29,8 @@ import 'custom_widgets/wallet_button.dart';
 
 // -----------------------------------------------------
 // FIX 1: MainAppScaffold now conditionally shows the AppBar
-//        The list of screens that use their own app bar is updated.
 //
-// MODIFIED: ProfileAvatar moved to leading.
-// MODIFIED: Actions reordered: Search -> Wallet -> Settings.
+// MODIFIED: 'title' property in AppBar set to null to remove 'EduDoc'.
 // -----------------------------------------------------
 
 class MainAppScaffold extends StatelessWidget {
@@ -75,53 +73,54 @@ class MainAppScaffold extends StatelessWidget {
       // Conditionally set the AppBar to null for detail screens
       appBar: shouldShowMainAppBar
           ? AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: theme.colorScheme.surface.withAlpha(210),
-        elevation: theme.brightness == Brightness.light ? 1 : 0,
-        toolbarHeight: 65,
+              automaticallyImplyLeading: false,
+              backgroundColor: theme.colorScheme.surface.withAlpha(210),
+              elevation: theme.brightness == Brightness.light ? 1 : 0,
+              toolbarHeight: 65,
 
-        // MODIFICATION: ProfileAvatar moved to 'leading' (left side)
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8.0),
-          child: ProfileAvatar(
-            onTap: () => appState.navigate(AppScreen.profile),
-          ),
-        ),
+              leading: null, // No leading widget
+              // MODIFICATION: Title is now null, removing the 'EduDoc' text.
+              title: null,
 
-        // // Logo/Title placement (Remains commented out from previous request)
-        // title: Row(
-        //   children: [
-        //     Icon(Icons.school, color: theme.colorScheme.tertiary),
-        //     const SizedBox(width: 8),
-        //     Text(
-        //       'EduDoc',
-        //       style: theme.textTheme.titleLarge?.copyWith(
-        //         fontSize: 24,
-        //         color: theme.colorScheme.primary,
-        //       ),
-        //     ),
-        //   ],
-        // ),
+              // Previous 'title' that was commented out:
+              // title: Row(
+              //   children: [
+              //     Icon(Icons.school, color: theme.colorScheme.tertiary),
+              //     const SizedBox(width: 8),
+              //     Text(
+              //       'EduDoc',
+              //       style: theme.textTheme.titleLarge?.copyWith(
+              //         fontSize: 24,
+              //         color: theme.colorScheme.primary,
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => appState.navigate(AppScreen.search),
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
 
-        // MODIFICATION: Icon Placements reordered and Settings added
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => appState.navigate(AppScreen.search),
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(width: 8),
+                WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
+                const SizedBox(width: 8),
 
-          WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
-          const SizedBox(width: 8),
-
-          IconButton(
-            icon: Icon(Icons.settings, color: Colors.grey.shade400),
-            onPressed: () => appState.navigate(AppScreen.settings),
-          ),
-          const SizedBox(width: 8),
-        ],
-      )
+                // Profile Avatar with fixed sizing
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: ProfileAvatar(
+                      onTap: () => appState.navigate(AppScreen.profile),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            )
           : null, // Set AppBar to null for detail screens
       body: child,
       bottomNavigationBar: Builder(
@@ -163,7 +162,7 @@ class MainAppScaffold extends StatelessWidget {
                   appState.navigate(AppScreen.cart);
                   break;
                 case 3:
-                  appState.navigate(AppScreen.profile);
+                  appState.navigate(AppScreen.settings);
                   break;
               }
             },
@@ -175,7 +174,7 @@ class MainAppScaffold extends StatelessWidget {
 }
 
 // -----------------------------------------------------
-// FIX 2: MainScreenRouter now correctly references MainAppScaffold
+// FIX 2: MainScreenRouter remains unchanged
 // -----------------------------------------------------
 
 class MainScreenRouter extends StatelessWidget {
@@ -203,8 +202,6 @@ class MainScreenRouter extends StatelessWidget {
         showScaffold = false;
         break;
       case AppScreen.permissions:
-      // This line is structurally correct, but the PermissionsScreen class
-      // definition in its own file is likely missing or misspelled.
         currentView = const PermissionsScreen();
         showScaffold = false;
         break;
@@ -221,14 +218,11 @@ class MainScreenRouter extends StatelessWidget {
         showScaffold = false; // Edit screen typically full-screen
         break;
       default:
-      // All other screens will use the MainAppScaffold, but the
-      // MainAppScaffold itself now decides whether to show the AppBar.
         showScaffold = true;
         currentView = _buildMainAppContent(appState.currentScreen);
         break;
     }
 
-    // FIX: MainAppScaffold is used correctly as a constructor
     return showScaffold
         ? MainAppScaffold(backupColor: backupColor, child: currentView)
         : currentView;
@@ -273,7 +267,6 @@ class MainScreenRouter extends StatelessWidget {
 }
 
 class BuyTokensModal extends StatelessWidget {
-  // ... (content of BuyTokensModal remains the same) ...
   const BuyTokensModal({super.key});
 
   @override

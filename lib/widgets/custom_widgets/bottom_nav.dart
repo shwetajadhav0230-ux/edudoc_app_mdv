@@ -13,9 +13,13 @@ class BottomNav extends StatelessWidget {
       onTap: onTap,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.library_books), label: 'Library'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.library_books),
+          label: 'Library',
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        // Replaced 'Profile' (Icons.person) with 'Settings' (Icons.settings)
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
       ],
     );
   }

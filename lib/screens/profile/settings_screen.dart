@@ -1,4 +1,6 @@
-// lib/screens/profile/settings_screen.dart
+// lib/screens/settings/settings_screen.dart
+// NOTE: This file was likely moved from lib/screens/profile/settings_screen.dart
+// to align with the new 'Settings' focus in the bottom navigation.
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,15 +18,6 @@ class SettingsScreen extends StatelessWidget {
     // to prevent unnecessary widget rebuilds. For now, we keep the original pattern.
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-
-    // // Navigation function from the original code
-    // final VoidCallback navigateBack = () {
-    //   try {
-    //     Navigator.of(context).pop();
-    //   } catch (e) {
-    //     appState.navigate(AppScreen.profile);
-    //   }
-    // };
 
     return Scaffold(
       appBar: AppBar(

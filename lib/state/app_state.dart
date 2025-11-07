@@ -120,7 +120,7 @@ class AppState extends ChangeNotifier {
     }
     _currentScreen = screen;
     _selectedProductId =
-    (screen == AppScreen.productDetails || screen == AppScreen.reading)
+        (screen == AppScreen.productDetails || screen == AppScreen.reading)
         ? id
         : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
@@ -138,12 +138,10 @@ class AppState extends ChangeNotifier {
     }
 
     // 2. Secondary Screens (opened from home/profile) that go back to previous page
-    // This is the group for screens like Settings, Wallet, Search, etc., which
-    // should respect the previous screen (e.g., Profile).
+    // NOTE: AppScreen.settings is REMOVED from this list so it defaults to AppScreen.home below.
     if (_currentScreen == AppScreen.reading ||
         _currentScreen == AppScreen.productDetails ||
         _currentScreen == AppScreen.offerDetails ||
-        _currentScreen == AppScreen.settings ||
         _currentScreen == AppScreen.userActivity ||
         _currentScreen == AppScreen.wallet ||
         _currentScreen == AppScreen.search) {
@@ -152,7 +150,10 @@ class AppState extends ChangeNotifier {
     }
 
     // 3. Top-level screens/tabs that go back to Home (or the initial welcome flow)
-    if (_currentScreen == AppScreen.profileEdit ||
+    // FIX: AppScreen.settings is added here to ensure the back action from the main
+    // Settings page defaults to the Home screen, regardless of the previous tab.
+    if (_currentScreen == AppScreen.settings ||
+        _currentScreen == AppScreen.profileEdit ||
         _currentScreen == AppScreen.library ||
         _currentScreen == AppScreen.cart ||
         _currentScreen == AppScreen.profile ||
