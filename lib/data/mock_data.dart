@@ -5,10 +5,10 @@ import '../models/product.dart';
 import '../models/transaction.dart';
 
 // --- LOCAL ASSET PDF PATHS ---
-const String samplePdf1 = 'pdfs/sample1.pdf';
-const String samplePdf2 = 'assets/pdfs/sample2.pdf';
-const String samplePdf3 = 'assets/pdfs/sample3.pdf';
-const String samplePdf4 = 'assets/pdfs/sample4.pdf';
+const String samplePdf1 = 'lib/assets/pdfs/sample1.pdf';
+const String samplePdf2 = 'lib/assets/pdfs/sample2.pdf';
+const String samplePdf3 = 'lib/assets/pdfs/sample3.pdf';
+const String samplePdf4 = 'lib/assets/pdfs/sample4.pdf';
 
 final List<Product> dummyProducts = [
   Product(
