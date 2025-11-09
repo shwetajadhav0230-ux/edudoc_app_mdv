@@ -47,14 +47,20 @@ class AppState extends ChangeNotifier {
   String? _selectedProductId;
   String? _selectedOfferId;
 
-  // --- NEW: Settings State Variables ---
+  // --- Settings State Variables ---
   bool _isBiometricEnabled = false; // Initialize to false
   bool _areNotificationsEnabled = true; // Initialize to true
   bool _isPromoEmailEnabled = false; // Initialize to false
 
-  // --- 3. ADD TRANSACTION HISTORY TO STATE ---
-  final List<Transaction> _transactionHistory = mock_data.transactionHistory
-      .toList();
+  // --- NEW: Reader Settings State (For Settings Dialog Functionality) ---
+  String _readerPageFlipping = 'Horizontal';
+  String _readerColorMode = 'Day';
+  double _readerFontSize = 42;
+  double _readerLineSpacing = 100;
+
+  // --- Transaction History State ---
+  final List<Transaction> _transactionHistory =
+      mock_data.transactionHistory.toList();
 
   // --- User/Profile State ---
   int _walletTokens = 450;
@@ -98,13 +104,19 @@ class AppState extends ChangeNotifier {
   String get homeFilter => _homeFilter;
   int get homeCurrentPage => _homeCurrentPage;
 
-  // --- 4. ADD GETTER FOR THE TRANSACTION LIST ---
+  // --- ADDED: GETTER FOR THE TRANSACTION LIST ---
   List<Transaction> get transactionHistory => _transactionHistory;
 
-  // --- NEW: Settings Getters ---
+  // --- Settings Getters ---
   bool get isBiometricEnabled => _isBiometricEnabled;
   bool get areNotificationsEnabled => _areNotificationsEnabled;
   bool get isPromoEmailEnabled => _isPromoEmailEnabled;
+
+  // --- CRITICAL: Reader Settings Getters (Used to initialize Dialog State) ---
+  String get readerPageFlipping => _readerPageFlipping;
+  String get readerColorMode => _readerColorMode;
+  double get readerFontSize => _readerFontSize;
+  double get readerLineSpacing => _readerLineSpacing;
 
   // FIX: Auth/Lock Screen Getters
   String get pinCode => _pinCode;
@@ -121,8 +133,8 @@ class AppState extends ChangeNotifier {
     _currentScreen = screen;
     _selectedProductId =
         (screen == AppScreen.productDetails || screen == AppScreen.reading)
-        ? id
-        : null;
+            ? id
+            : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
     notifyListeners();
   }
@@ -138,7 +150,6 @@ class AppState extends ChangeNotifier {
     }
 
     // 2. Secondary Screens (opened from home/profile) that go back to previous page
-    // NOTE: AppScreen.settings is REMOVED from this list so it defaults to AppScreen.home below.
     if (_currentScreen == AppScreen.reading ||
         _currentScreen == AppScreen.productDetails ||
         _currentScreen == AppScreen.offerDetails ||
@@ -149,9 +160,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    // 3. Top-level screens/tabs that go back to Home (or the initial welcome flow)
-    // FIX: AppScreen.settings is added here to ensure the back action from the main
-    // Settings page defaults to the Home screen, regardless of the previous tab.
+    // 3. Top-level screens/tabs that go back to Home
     if (_currentScreen == AppScreen.settings ||
         _currentScreen == AppScreen.profileEdit ||
         _currentScreen == AppScreen.library ||
@@ -245,35 +254,54 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- NEW: Settings Toggles Implementation ---
+  // --- Settings Toggles Implementation ---
 
   /// Toggles the state of biometric login (Fingerprint/Face ID).
   void toggleBiometrics(bool newValue) {
     _isBiometricEnabled = newValue;
-    // In a real app, you would interact with a local auth service here
     notifyListeners();
   }
 
   /// Toggles all main application notifications.
   void toggleAppNotifications(bool newValue) {
     _areNotificationsEnabled = newValue;
-    // You might also update _isPromoEmailEnabled here depending on requirements
     notifyListeners();
   }
 
   /// Toggles promotional email subscription status.
   void togglePromoEmails(bool newValue) {
     _isPromoEmailEnabled = newValue;
-    // In a real app, this would likely trigger an API call to update the user's preference
+    notifyListeners();
+  }
+
+  // --- CRITICAL: Reader Settings Mutators (Used by ReaderSettingsDialog) ---
+
+  /// Updates the page flipping mode (Horizontal/Vertical).
+  void setReaderPageFlipping(String mode) {
+    _readerPageFlipping = mode;
+    notifyListeners();
+  }
+
+  /// Updates the reading color mode (Day/Night/Sepia).
+  void setReaderColorMode(String mode) {
+    _readerColorMode = mode;
+    notifyListeners();
+  }
+
+  /// Updates the reader font size.
+  void setReaderFontSize(double size) {
+    _readerFontSize = size;
+    notifyListeners();
+  }
+
+  /// Updates the reader line spacing.
+  void setReaderLineSpacing(double spacing) {
+    _readerLineSpacing = spacing;
     notifyListeners();
   }
 
   // --- Cart/Wallet/Bookmark Logic ---
   void addToCart(Product product) {
-    // --- THIS IS THE FIX ---
-    // The "if (product.isFree) return;" line has been removed.
-    // This allows free items to be added to the cart so they can be
-    // processed during checkout to create a "Download" history.
     if (_cartItems.any((item) => item.id == product.id)) return;
     _cartItems.add(product);
     notifyListeners();
@@ -343,7 +371,6 @@ class AppState extends ChangeNotifier {
   }
 
   void buyTokens(int amount) {
-    // --- 5. MODIFY 'buyTokens' ---
     _walletTokens += amount;
 
     // Create a new transaction object
@@ -363,7 +390,6 @@ class AppState extends ChangeNotifier {
 
   // FIX: Checkout now adds purchased items to the *Library* list (`_ownedProductIds`)
   void checkout() {
-    // --- 6. MODIFY 'checkout' ---
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
     // MODIFIED: Check if cart is empty after checking cost
     if (totalCost > _walletTokens || _cartItems.isEmpty) return;
