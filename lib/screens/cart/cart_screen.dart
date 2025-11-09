@@ -7,16 +7,118 @@ import '../../state/app_state.dart';
 import '../../widgets/custom_widgets/cart_item.dart';
 import '../../widgets/custom_widgets/summary_row.dart';
 
-class CartScreen extends StatelessWidget {
+// CONVERTED TO STATEFULWIDGET TO MANAGE PASSWORD INPUT STATE
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
 
   @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // NEW METHOD: Shows the password confirmation dialog
+  void _showPasswordConfirmationDialog(BuildContext context, int totalCost) {
+    _passwordController.clear();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        // Use a StatefulBuilder to manage the error text state locally within the dialog
+        String? localErrorText;
+        final appState = Provider.of<AppState>(dialogContext, listen: false);
+
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setLocalState) {
+            return AlertDialog(
+              title: const Text('Confirm Purchase'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text('Please enter your password to confirm the purchase of $totalCost Tokens.'),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      // Use local state error
+                      errorText: localErrorText,
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                    ),
+                    onChanged: (_) {
+                      if (localErrorText != null) {
+                        setLocalState(() => localErrorText = null);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              actions: <Widget>[
+                // Use Row and spaceBetween to separate the buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        final enteredPassword = _passwordController.text;
+
+                        // TODO: REPLACE THIS MOCK IMPLEMENTATION WITH A REAL AuthService/Backend CALL
+                        const mockCorrectPassword = 'password123';
+
+                        if (enteredPassword.isEmpty) {
+                          setLocalState(() => localErrorText = 'Password is required.');
+                        } else if (enteredPassword != mockCorrectPassword) {
+                          setLocalState(() => localErrorText = 'Incorrect password.');
+                        } else {
+                          // Success: Close dialog and proceed with checkout
+                          Navigator.of(context).pop();
+                          appState.checkout(); // Actual checkout logic from AppState
+
+                          // Show confirmation message using the main screen's context
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Purchase confirmed and completed!'),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Confirm'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Moved to state build method
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
     final totalCost = appState.cartItems.fold(
       0,
-      (sum, item) => sum + item.price,
+          (sum, item) => sum + item.price,
     );
     final canCheckout =
         totalCost <= appState.walletTokens && appState.cartItems.isNotEmpty;
@@ -40,25 +142,20 @@ class CartScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // The title "Shopping Cart" is now in the AppBar, removed here
-
-            // Re-adding a small space if needed, though the AppBar spacing might suffice
-            // const SizedBox(height: 16),
-
             // --- Cart Items List ---
             // This Column lists the cart items. It is INSIDE the main Column.
             appState.cartItems.isEmpty
                 ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48.0),
-                      child: Text('Your cart is empty.'),
-                    ),
-                  )
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 48.0),
+                child: Text('Your cart is empty.'),
+              ),
+            )
                 : Column(
-                    children: appState.cartItems
-                        .map((item) => CartItem(product: item))
-                        .toList(),
-                  ),
+              children: appState.cartItems
+                  .map((item) => CartItem(product: item))
+                  .toList(),
+            ),
 
             const SizedBox(height: 24), // Space between items and summary
             // --- Summary Card ---
@@ -115,7 +212,10 @@ class CartScreen extends StatelessWidget {
                         ],
                       ),
                       child: ElevatedButton.icon(
-                        onPressed: canCheckout ? appState.checkout : null,
+                        // MODIFIED: Call the password confirmation dialog
+                        onPressed: canCheckout
+                            ? () => _showPasswordConfirmationDialog(context, totalCost)
+                            : null,
                         icon: const Icon(
                           Icons.description, // Icon from image
                           color: Colors.white,
