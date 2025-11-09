@@ -57,6 +57,8 @@ class AppState extends ChangeNotifier {
   String _readerColorMode = 'Day';
   double _readerFontSize = 42;
   double _readerLineSpacing = 100;
+  // NEW: Helper property to track if reader settings have changed
+  int _readerSettingsVersion = 0;
 
   // --- Transaction History State ---
   final List<Transaction> _transactionHistory =
@@ -117,6 +119,8 @@ class AppState extends ChangeNotifier {
   String get readerColorMode => _readerColorMode;
   double get readerFontSize => _readerFontSize;
   double get readerLineSpacing => _readerLineSpacing;
+  // NEW: Getter for version number
+  int get readerSettingsVersion => _readerSettingsVersion;
 
   // FIX: Auth/Lock Screen Getters
   String get pinCode => _pinCode;
@@ -276,27 +280,36 @@ class AppState extends ChangeNotifier {
 
   // --- CRITICAL: Reader Settings Mutators (Used by ReaderSettingsDialog) ---
 
+  // Helper to increment version number when any reader setting changes
+  void _incrementReaderVersion() {
+    _readerSettingsVersion++;
+  }
+
   /// Updates the page flipping mode (Horizontal/Vertical).
   void setReaderPageFlipping(String mode) {
     _readerPageFlipping = mode;
+    _incrementReaderVersion(); // Signal change
     notifyListeners();
   }
 
   /// Updates the reading color mode (Day/Night/Sepia).
   void setReaderColorMode(String mode) {
     _readerColorMode = mode;
+    _incrementReaderVersion(); // Signal change
     notifyListeners();
   }
 
   /// Updates the reader font size.
   void setReaderFontSize(double size) {
     _readerFontSize = size;
+    _incrementReaderVersion(); // Signal change
     notifyListeners();
   }
 
   /// Updates the reader line spacing.
   void setReaderLineSpacing(double spacing) {
     _readerLineSpacing = spacing;
+    _incrementReaderVersion(); // Signal change
     notifyListeners();
   }
 

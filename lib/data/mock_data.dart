@@ -9,6 +9,7 @@ const String samplePdf1 = 'lib/assets/pdfs/sample1.pdf';
 const String samplePdf2 = 'lib/assets/pdfs/sample2.pdf';
 const String samplePdf3 = 'lib/assets/pdfs/sample3.pdf';
 const String samplePdf4 = 'lib/assets/pdfs/sample4.pdf';
+const String samplePdf5 = 'lib/assets/pdfs/sample5.pdf';
 
 final List<Product> dummyProducts = [
   Product(
@@ -69,7 +70,7 @@ final List<Product> dummyProducts = [
         'Guided prompts designed to improve mental clarity, reduce stress, and foster a positive mindset.',
     content:
         '## Day 1: Grounding\n**Morning Prompt**: List three sensory details you notice right now. **Evening Reflection**: What is one small success you achieved today?',
-    pdfUrl: samplePdf1,
+    pdfUrl: samplePdf3,
   ),
   Product(
     id: 4,
@@ -90,7 +91,7 @@ final List<Product> dummyProducts = [
         'For developers who already know React basics. Covers useState, useEffect, useMemo, useCallback, and creating reusable custom hooks for enterprise applications.',
     content:
         '## Custom Hooks\nCustom hooks are reusable functions for sharing stateful logic. Example: `useToggle` manages boolean state.',
-    pdfUrl: samplePdf3,
+    pdfUrl: samplePdf4,
   ),
   Product(
     id: 9,
@@ -111,7 +112,7 @@ final List<Product> dummyProducts = [
         'Covers Python, TensorFlow, PyTorch, CNNs, RNNs, and focuses on real-world projects in Computer Vision and NLP.',
     content:
         '## The Deep Learning Revolution\nDeep Learning (DL) uses neural networks with many layers to model complex non-linear relationships. Key libraries are TensorFlow and PyTorch.',
-    pdfUrl: samplePdf4,
+    pdfUrl: samplePdf5,
   ),
   Product(
     id: 10,
@@ -214,7 +215,7 @@ final List<Product> dummyProducts = [
         'A rigorous set of notes focused on preparing for technical interviews. Includes complexity analysis and common interview questions.',
     content:
         '## Binary Search Trees (BST)\nA node-based binary tree data structure where the left subtree has keys < parent key and the right subtree has keys > parent key.',
-    pdfUrl: samplePdf2,
+    pdfUrl: samplePdf5,
   ),
   Product(
     id: 8,
@@ -235,7 +236,7 @@ final List<Product> dummyProducts = [
         'A fun and fact-filled summary of our solar system, perfect for middle school students or anyone interested in astronomy.',
     content:
         r'## The Inner Planets\nMercury, Venus, Earth, and Mars are the four inner, terrestrial planets. Venus is the hottest due to its dense $\text{CO}_2$ atmosphere causing a runaway greenhouse effect.',
-    pdfUrl: null,
+    pdfUrl: samplePdf5,
   ),
 ];
 

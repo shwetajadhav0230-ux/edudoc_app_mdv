@@ -6,12 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:pdfx/pdfx.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/mock_data.dart'; // Ensure this path is correct
-import '../../state/app_state.dart'; // Ensure this path is correct
+import '../../data/mock_data.dart'
+    show dummyProducts; // Retained for ReadingScreen list
+import '../../state/app_state.dart'; // Retained for AppState usage
 
 // --- Helper Dialogs and Widgets ---
 
-// 1. Settings Dialog (CONVERTED TO STATEFUL TO ALLOW FUNCTIONALITY)
+// 1. Settings Dialog (Retained for structure)
 class ReaderSettingsDialog extends StatefulWidget {
   final AppState appState;
 
@@ -34,21 +35,96 @@ class _ReaderSettingsDialogState extends State<ReaderSettingsDialog> {
   bool _twoPagesLandscape = true;
   bool _pageMargins = false;
 
-  // CRITICAL FIX: Initialization logic moved here to run before build() and before errors.
-  _ReaderSettingsDialogState() {
-    // Note: We use late fields and initialize them within initState(), which is the standard pattern.
-    // The issue was in the compiler interpretation, which the new context should allow.
-  }
-
   @override
   void initState() {
     super.initState();
     // Safely initialize the fields from AppState inside initState()
-    final state = widget.appState;
+    final state = Provider.of<AppState>(context,
+        listen: false); // Use Provider to access state in initState safely
     _pageFlipping = state.readerPageFlipping;
     _colorMode = state.readerColorMode;
     _fontSize = state.readerFontSize;
     _lineSpacing = state.readerLineSpacing;
+  }
+
+  // --- Helper Methods (buildSettingRow, buildSliderSetting, buildToggleSetting) ---
+  Widget _buildSettingRow(String label, Widget control) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          control,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliderSetting(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged, {
+    double step = 1.0,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 10.0),
+          child: Text(label,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Slider(
+                value: value,
+                min: min,
+                max: max,
+                label: value.round().toString(),
+                onChanged: onChanged,
+                divisions: ((max - min) / step).round(),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.remove, size: 18),
+              onPressed: () {
+                if (value > min) onChanged(value - step);
+              },
+            ),
+            Text(value.round().toString()),
+            IconButton(
+              icon: const Icon(Icons.add, size: 18),
+              onPressed: () {
+                if (value < max) onChanged(value + step);
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToggleSetting(
+      String label, bool value, ValueChanged<bool> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
   }
 
   @override
@@ -209,160 +285,20 @@ class _ReaderSettingsDialogState extends State<ReaderSettingsDialog> {
       contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 0),
     );
   }
-
-  // --- Helper Methods (buildSettingRow, buildSliderSetting, buildToggleSetting) ---
-
-  Widget _buildSettingRow(String label, Widget control) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          control,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSliderSetting(
-    String label,
-    double value,
-    double min,
-    double max,
-    ValueChanged<double> onChanged, {
-    double step = 1.0,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 10.0),
-          child: Text(label,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: Slider(
-                value: value,
-                min: min,
-                max: max,
-                label: value.round().toString(),
-                onChanged: onChanged,
-                divisions: ((max - min) / step).round(),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.remove, size: 18),
-              onPressed: () {
-                if (value > min) onChanged(value - step);
-              },
-            ),
-            Text(value.round().toString()),
-            IconButton(
-              icon: const Icon(Icons.add, size: 18),
-              onPressed: () {
-                if (value < max) onChanged(value + step);
-              },
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildToggleSetting(
-      String label, bool value, ValueChanged<bool> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          Switch(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
 }
 
-// ... (Rest of reading_screen.dart code, including NetworkPDFViewerScreen,
-// OverflowMenu, ContentsDialog, and ReadingScreen remains the same)
-// 2. Overflow Menu (Matches image_37cac0.jpg)
+// 2. Overflow Menu (Removed)
 class OverflowMenu extends StatelessWidget {
   final VoidCallback onGoToPremium;
   const OverflowMenu({super.key, required this.onGoToPremium});
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      onSelected: (String result) {
-        if (result == 'premium') {
-          onGoToPremium();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$result selected')),
-          );
-        }
-      },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'review',
-          child: Text('My review'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'share',
-          child: Text('Share file'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'add_to',
-          child: Text('Add to ...'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'trash',
-          child: Text('Move to Trash'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'about',
-          child: Text('About document'),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          value: 'premium',
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Go to Premium',
-                style: TextStyle(color: Colors.red)),
-            // Placeholder image for the badge (assuming assets/images/google_icon.png exists)
-            trailing: Image.asset('assets/images/google_icon.png', height: 20),
-            onTap: () {
-              Navigator.of(context).pop('premium');
-            },
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          value: 'kids_mode',
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Kids mode'),
-            // Placeholder image for the badge
-            trailing: Image.asset('assets/images/google_icon.png', height: 20),
-          ),
-        ),
-      ],
-      icon: const Icon(Icons.more_vert, color: Colors.black),
-    );
+    return Container();
   }
 }
 
-// 3. Contents Dialog
+// 3. Contents Dialog (Retained with mock data structure)
 class ContentsDialog extends StatelessWidget {
   final String title;
   final int totalPages;
@@ -371,6 +307,7 @@ class ContentsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Retained mock contents since the dynamic outline logic was removed
     final contents = [
       {'title': 'Contents', 'page': 5},
       {'title': 'Chapter 1', 'page': 7},
@@ -405,7 +342,7 @@ class ContentsDialog extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            // CONTENTS Tab
+            // CONTENTS Tab (Using mock data)
             ListView.builder(
               itemCount: contents.length,
               itemBuilder: (context, index) {
@@ -456,12 +393,28 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
   int _currentPage = 1;
   int _totalPages = 0;
   bool _controllerInitialized = false;
-  bool _isBookmarked = false; // For bookmark functionality
 
   @override
   void initState() {
     super.initState();
     _loadPdf();
+  }
+
+  // Method to safely dispose controller
+  void _disposeController() {
+    if (_controllerInitialized) {
+      try {
+        _pdfController.dispose();
+      } catch (e) {
+        // print('Error disposing PDF controller: $e'); // Removed print
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposeController();
+    super.dispose();
   }
 
   Future<void> _loadPdf() async {
@@ -497,7 +450,7 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
         errorMessage = 'Failed to load PDF: ${e.toString()}';
         isLoading = false;
       });
-      print('PDF Load Error: $e');
+      // print('PDF Load Error: $e'); // Removed print
     }
   }
 
@@ -535,31 +488,9 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    // Safely dispose of controller
-    if (_controllerInitialized) {
-      try {
-        _pdfController.dispose();
-      } catch (e) {
-        print('Error disposing PDF controller: $e');
-      }
-    }
-    super.dispose();
-  }
+  // --- Core Functions ---
 
-  // --- NEW FUNCTIONALITIES ---
-
-  void _showSettings(AppState appState) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // CRITICAL: Pass the AppState instance to the dialog
-        return ReaderSettingsDialog(appState: appState);
-      },
-    );
-  }
-
+  // Replaced original _showContents with simple version
   void _showContents() {
     showModalBottomSheet(
       context: context,
@@ -580,56 +511,51 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
     );
   }
 
-  void _toggleBookmark() {
-    setState(() {
-      _isBookmarked = !_isBookmarked;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isBookmarked
-            ? 'Page $_currentPage Bookmarked!'
-            : 'Bookmark removed.'),
-        duration: const Duration(milliseconds: 1000),
-      ),
-    );
+  void _jumpToPage(int page) {
+    if (_pdfController != null && page >= 1 && page <= _totalPages) {
+      _pdfController.jumpToPage(page);
+      setState(() {
+        _currentPage = page;
+      });
+    }
   }
 
-  void _performSearch() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Search functionality triggered.')),
-    );
+  // Custom back handler
+  void _goBack() {
+    Navigator.of(context).pop();
   }
-  // --- END NEW FUNCTIONALITIES ---
 
   @override
   Widget build(BuildContext context) {
-    // CRITICAL: Access the AppState instance here
-    final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
     final isDarkTheme = theme.brightness == Brightness.dark;
 
+    // SIMPLIFIED UI COLORS
+    const Color toolbarColor = Colors.white;
+    const Color iconColor = Colors.black;
+
     return Scaffold(
-      // Implement custom AppBar to match the look of the reader images
+      // --- SIMPLIFIED APPBAR ---
       appBar: AppBar(
+        // We handle back navigation manually to ensure the icon is correct
         automaticallyImplyLeading: false,
-        backgroundColor:
-            Colors.white, // Lighter background for the reader toolbar
+        backgroundColor: toolbarColor,
         elevation: 1,
 
+        // CRITICAL FIX: Replace three lines icon with back button
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black),
-          onPressed: _showContents, // Functionality: Opens Contents Dialog
+          icon: const Icon(Icons.arrow_back, color: iconColor),
+          onPressed: _goBack, // Navigate back to the list screen
         ),
 
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              // Assuming 'Falling for Your Best Friend\'s Twin: a Sweet Romantic...' is the full title
               widget.title,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontSize: 16,
-                color: Colors.black,
+                color: iconColor,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -644,52 +570,15 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
           ],
         ),
 
-        actions: [
-          // Bookmark Icon
-          IconButton(
-            icon: Icon(
-              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _isBookmarked ? theme.colorScheme.primary : Colors.black,
-            ),
-            onPressed: _toggleBookmark, // Functionality: Toggles bookmark state
-          ),
-
-          // New Icon - Matches the book icon with a red dot (New)
-          const Icon(Icons.new_releases, color: Colors.red, size: 20),
-
-          // Audio icon (matches speaker icon)
-          IconButton(
-            icon: const Icon(Icons.volume_up, color: Colors.black),
-            onPressed: () {}, // Text-to-Speech/Audio functionality
-          ),
-
-          // Search icon
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: _performSearch, // Functionality: Search
-          ),
-
-          // Settings icon (Matches gear icon)
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black),
-            onPressed: () =>
-                _showSettings(appState), // CRITICAL: Pass AppState here
-          ),
-
-          // Overflow Menu (Matches 3-dot icon)
-          OverflowMenu(
-            onGoToPremium: () {
-              // AppState navigation placeholder
-            },
-          ),
-        ],
+        // REMOVE ALL ACTIONS (Bookmark, New Release, Audio, Search, Settings, Overflow)
+        actions: const [],
       ),
 
-      // Add Bottom page count and slider (Matches bottom of image_37c819.jpg)
+      // Add Bottom page count and slider
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: toolbarColor,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -707,16 +596,18 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
               max: _totalPages.toDouble().clamp(1, double.infinity),
               divisions: _totalPages.clamp(1, 100),
               onChanged: (double newValue) {
-                // In a real PDF viewer, this updates the page.
-                // _pdfController.jumpToPage(newValue.round());
                 setState(() {
                   _currentPage = newValue.round();
                 });
               },
+              onChangeEnd: (double newValue) {
+                _jumpToPage(newValue.round());
+              },
+              label: _currentPage.toString(),
             ),
             Text(
               '${_currentPage} of $_totalPages',
-              style: const TextStyle(fontSize: 14, color: Colors.black),
+              style: const TextStyle(fontSize: 14, color: iconColor),
             ),
           ],
         ),
@@ -841,9 +732,15 @@ class ReadingScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
+    // Get document data safely
     final List<Map<String, String?>> pdfDocuments = dummyProducts
         .where((p) => p.pdfUrl != null)
-        .map((p) => {'title': p.title, 'author': p.author, 'pdfUrl': p.pdfUrl})
+        .map((p) => {
+              'title': p.title,
+              'author': p.author,
+              'pdfUrl': p.pdfUrl,
+              'id': p.id.toString()
+            }) // Added id as String for safety
         .toList();
 
     return Scaffold(
