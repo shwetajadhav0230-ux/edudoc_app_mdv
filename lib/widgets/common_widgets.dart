@@ -23,6 +23,8 @@ import '../screens/profile/settings_screen.dart'; // Using the updated path
 import '../screens/search/search_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
 import '../state/app_state.dart';
+import '../utils/constants.dart';
+import '../services/payment_service.dart';
 import 'custom_widgets/bottom_nav.dart';
 import 'custom_widgets/profile_avatar.dart';
 import 'custom_widgets/wallet_button.dart';
@@ -73,52 +75,52 @@ class MainAppScaffold extends StatelessWidget {
       // Conditionally set the AppBar to null for detail screens
       appBar: shouldShowMainAppBar
           ? AppBar(
-              automaticallyImplyLeading: false,
-              backgroundColor: theme.colorScheme.surface.withAlpha(210),
-              elevation: theme.brightness == Brightness.light ? 1 : 0,
-              toolbarHeight: 65,
+        automaticallyImplyLeading: false,
+        backgroundColor: theme.colorScheme.surface.withAlpha(210),
+        elevation: theme.brightness == Brightness.light ? 1 : 0,
+        toolbarHeight: 65,
 
-              leading: null, // No leading widget as per previous modification
+        leading: null, // No leading widget as per previous modification
 
-              title: Row(
-                children: [
-                  Icon(Icons.school, color: theme.colorScheme.tertiary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'EduDoc',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontSize: 24,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
+        title: Row(
+          children: [
+            Icon(Icons.school, color: theme.colorScheme.tertiary),
+            const SizedBox(width: 8),
+            Text(
+              'EduDoc',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 24,
+                color: theme.colorScheme.primary,
               ),
+            ),
+          ],
+        ),
 
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () => appState.navigate(AppScreen.search),
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(width: 8),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => appState.navigate(AppScreen.search),
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(width: 8),
 
-                WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
-                const SizedBox(width: 8),
+          WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
+          const SizedBox(width: 8),
 
-                // FIX: ProfileAvatar sizing fixed by wrapping it in a SizedBox
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: SizedBox(
-                    width: 40, // Adjust width as needed
-                    height: 40, // Adjust height as needed
-                    child: ProfileAvatar(
-                      onTap: () => appState.navigate(AppScreen.profile),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            )
+          // FIX: ProfileAvatar sizing fixed by wrapping it in a SizedBox
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: SizedBox(
+              width: 40, // Adjust width as needed
+              height: 40, // Adjust height as needed
+              child: ProfileAvatar(
+                onTap: () => appState.navigate(AppScreen.profile),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      )
           : null, // Set AppBar to null for detail screens
       body: child,
       bottomNavigationBar: Builder(
@@ -296,8 +298,14 @@ class BuyTokensModal extends StatelessWidget {
             final amount = packages[index];
             return GestureDetector(
               onTap: () {
-                appState.buyTokens(amount);
+                final user = appState.currentUser;
                 Navigator.of(context).pop();
+                PaymentService().payForTokens(
+                  context,
+                  tokens: amount,
+                  contact: user.phoneNumber,
+                  email: user.email,
+                );
               },
               child: Card(
                 color: amount == 500
@@ -321,7 +329,7 @@ class BuyTokensModal extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '\$${(amount / 100).toStringAsFixed(2)}',
+                        '₹${((amount * AppConstants.paisePerToken) / 100).toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,

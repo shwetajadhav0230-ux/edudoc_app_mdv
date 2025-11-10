@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/payment_service.dart';
 import '../../state/app_state.dart';
+import '../../utils/constants.dart';
 
 class BuyTokensModal extends StatelessWidget {
   const BuyTokensModal({super.key});
@@ -21,20 +23,18 @@ class BuyTokensModal extends StatelessWidget {
       ),
       // MODIFIED: Use a ConstrainedBox instead of SizedBox with double.maxFinite
       // to better control the width of the dialog content.
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 400, // Reasonable max width for a modal
-        ),
+      content: SizedBox(
+        width: 400,
+        height: 280,
         child: GridView.builder(
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
-          physics:
-              const NeverScrollableScrollPhysics(), // Prevent scrolling if packages fit
+          physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            crossAxisSpacing: 16, // Increased spacing
-            mainAxisSpacing: 16, // Increased spacing
-            mainAxisExtent:
-                120, // MODIFIED: Use fixed height for items for better control
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            mainAxisExtent: 120,
           ),
           itemCount: packages.length,
           itemBuilder: (context, index) {
@@ -44,9 +44,15 @@ class BuyTokensModal extends StatelessWidget {
 
             return GestureDetector(
               onTap: () {
-                // Assuming appState.buyTokens(amount) is defined
-                appState.buyTokens(amount);
-                Navigator.of(context).pop();
+                // Start Razorpay checkout for the selected tokens package
+                final user = appState.currentUser;
+                Navigator.of(context).pop(); // Close the modal before opening checkout
+                PaymentService().payForTokens(
+                  context,
+                  tokens: amount,
+                  contact: user.phoneNumber,
+                  email: user.email,
+                );
               },
               // MODIFIED: Set a higher elevation for a prominent shadow
               child: Card(
@@ -56,9 +62,9 @@ class BuyTokensModal extends StatelessWidget {
                   // Optional: Add a subtle border for contrast in dark mode
                   side: isDarkTheme
                       ? BorderSide(
-                          color: Colors.white.withOpacity(0.1),
-                          width: 0.5,
-                        )
+                    color: Colors.white.withOpacity(0.1),
+                    width: 0.5,
+                  )
                       : BorderSide.none,
                 ),
                 child: Center(
@@ -91,7 +97,7 @@ class BuyTokensModal extends StatelessWidget {
                       // Text('Tokens') removed and replaced by the icon in the Row above
                       const SizedBox(height: 4),
                       Text(
-                        '\$${(amount / 100).toStringAsFixed(2)}',
+                        '₹${((amount * AppConstants.paisePerToken) / 100).toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 16, // Explicitly set size for balance
                           fontWeight: FontWeight.bold,
