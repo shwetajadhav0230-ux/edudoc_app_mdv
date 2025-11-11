@@ -22,6 +22,7 @@ dependencies:
 
   # PDF Viewing (Web + Mobile Support)
   pdfx: any
+  razorpay_flutter: 1.4.0
 
 dev_dependencies:
   flutter_test:

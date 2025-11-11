@@ -9,6 +9,8 @@ import '../screens/auth/permissions_screen.dart'; // <--- FIX: Ensure this class
 import '../screens/auth/signup_screen.dart';
 import '../screens/auth/welcome_screen.dart';
 import '../screens/cart/cart_screen.dart';
+import '../screens/common/about_screen.dart';
+import '../screens/common/help_support_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/library/bookmarks_screen.dart';
 import '../screens/library/library_screen.dart';
@@ -17,14 +19,17 @@ import '../screens/offers/offers_screen.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../screens/product/reading_screen.dart';
 import '../screens/profile/activity_screen.dart';
+import '../screens/profile/change_password_screen.dart'; // Assuming this screen exists
+// --- ADDED IMPORTS for Deep Settings Screens ---
+import '../screens/profile/email_management_screen.dart';
 import '../screens/profile/profile_edit_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/settings_screen.dart'; // Using the updated path
 import '../screens/search/search_screen.dart';
 import '../screens/wallet/wallet_screen.dart';
+import '../services/payment_service.dart';
 import '../state/app_state.dart';
 import '../utils/constants.dart';
-import '../services/payment_service.dart';
 import 'custom_widgets/bottom_nav.dart';
 import 'custom_widgets/profile_avatar.dart';
 import 'custom_widgets/wallet_button.dart';
@@ -75,54 +80,56 @@ class MainAppScaffold extends StatelessWidget {
       // Conditionally set the AppBar to null for detail screens
       appBar: shouldShowMainAppBar
           ? AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: theme.colorScheme.surface.withAlpha(210),
-        elevation: theme.brightness == Brightness.light ? 1 : 0,
-        toolbarHeight: 65,
+              automaticallyImplyLeading: false,
+              backgroundColor: theme.colorScheme.surface.withAlpha(210),
+              elevation: theme.brightness == Brightness.light ? 1 : 0,
+              toolbarHeight: 65,
 
-        leading: null, // No leading widget as per previous modification
+              leading: null, // No leading widget as per previous modification
 
-        title: Row(
-          children: [
-            Icon(Icons.school, color: theme.colorScheme.tertiary),
-            const SizedBox(width: 8),
-            Text(
-              'EduDoc',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 24,
-                color: theme.colorScheme.primary,
+              title: Row(
+                children: [
+                  Icon(Icons.school, color: theme.colorScheme.tertiary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'EduDoc',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: 24,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
 
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => appState.navigate(AppScreen.search),
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(width: 8),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => appState.navigate(AppScreen.search),
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
 
-          WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
-          const SizedBox(width: 8),
+                WalletButton(onTap: () => appState.navigate(AppScreen.wallet)),
+                const SizedBox(width: 8),
 
-          // FIX: ProfileAvatar sizing fixed by wrapping it in a SizedBox
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: SizedBox(
-              width: 40, // Adjust width as needed
-              height: 40, // Adjust height as needed
-              child: ProfileAvatar(
-                onTap: () => appState.navigate(AppScreen.profile),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      )
+                // FIX: ProfileAvatar sizing fixed by wrapping it in a SizedBox
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: SizedBox(
+                    width: 40, // Adjust width as needed
+                    height: 40, // Adjust height as needed
+                    child: ProfileAvatar(
+                      onTap: () => appState.navigate(AppScreen.profile),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            )
           : null, // Set AppBar to null for detail screens
       body: child,
+      // The bottom navigation bar will only be shown if the screen is NOT one
+      // of the deep settings screens (as modified in MainScreenRouter below).
       bottomNavigationBar: Builder(
         builder: (context) {
           int currentIndex = 0;
@@ -142,6 +149,7 @@ class MainAppScaffold extends StatelessWidget {
             case AppScreen.userActivity:
             case AppScreen.settings:
             case AppScreen.profileEdit:
+              // Removed the deep settings screens here as they won't use the bottom nav
               currentIndex = 3;
               break;
             default:
@@ -174,7 +182,7 @@ class MainAppScaffold extends StatelessWidget {
 }
 
 // -----------------------------------------------------
-// FIX 2: MainScreenRouter now correctly references MainAppScaffold
+// FIX 2: MainScreenRouter now bypasses MainAppScaffold for deep settings screens.
 // -----------------------------------------------------
 
 class MainScreenRouter extends StatelessWidget {
@@ -217,6 +225,16 @@ class MainScreenRouter extends StatelessWidget {
         currentView = const ProfileEditScreen();
         showScaffold = false; // Edit screen typically full-screen
         break;
+
+      // FIX: Deep Settings Screens should not use MainAppScaffold
+      case AppScreen.emailManagement:
+      case AppScreen.changePassword:
+      case AppScreen.about:
+      case AppScreen.helpSupport:
+        currentView = _buildMainAppContent(appState.currentScreen);
+        showScaffold = false; // Do NOT show the main scaffold
+        break;
+
       default:
         showScaffold = true;
         currentView = _buildMainAppContent(appState.currentScreen);
@@ -255,6 +273,18 @@ class MainScreenRouter extends StatelessWidget {
         return const ProductDetailsScreen();
       case AppScreen.search:
         return const SearchScreen();
+
+      // --- Deep settings destinations are now routed here for full-screen view ---
+      case AppScreen.emailManagement:
+        return const EmailManagementScreen();
+      case AppScreen.changePassword:
+        return const ChangePasswordScreen();
+      case AppScreen.about:
+        return const AboutScreen();
+      case AppScreen.helpSupport:
+        return const HelpSupportScreen();
+      // --------------------------------------------------------------------------
+
       default:
         return const Center(
           child: Text(

@@ -86,9 +86,15 @@ class _EmailManagementScreenState extends State<EmailManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => appState.navigateBack(),
+        // ✨ FIX: Wrap IconButton in Padding to push it away from the edge
+        leading: Padding(
+          // Adjust padding (e.g., 8.0 on the left) to create separation.
+          // AppBar handles internal padding, so we might only need a bit more.
+          padding: const EdgeInsets.only(left: 8.0),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => appState.navigateBack(),
+          ),
         ),
         title: const Text('Manage Email'),
       ),

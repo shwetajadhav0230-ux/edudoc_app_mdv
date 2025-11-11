@@ -149,6 +149,8 @@ class AppState extends ChangeNotifier {
         _currentScreen == AppScreen.changePassword ||
         _currentScreen == AppScreen.about ||
         _currentScreen == AppScreen.helpSupport) {
+      // Keep navigate() here as it correctly sets a new, fixed destination
+      // and updates the stack one level up.
       navigate(AppScreen.settings);
       return;
     }
@@ -160,7 +162,12 @@ class AppState extends ChangeNotifier {
         _currentScreen == AppScreen.userActivity ||
         _currentScreen == AppScreen.wallet ||
         _currentScreen == AppScreen.search) {
-      navigate(_previousPage);
+      // FIX: Manually change state instead of calling navigate() to avoid
+      // navigate() from overwriting _previousPage with the current screen.
+      _currentScreen = _previousPage;
+      _selectedProductId = null; // Clear IDs for back navigation
+      _selectedOfferId = null; // Clear IDs for back navigation
+      notifyListeners();
       return;
     }
 
@@ -172,12 +179,16 @@ class AppState extends ChangeNotifier {
         _currentScreen == AppScreen.profile ||
         _currentScreen == AppScreen.bookmarks ||
         _currentScreen == AppScreen.offers) {
-      navigate(AppScreen.home);
+      // FIX: Manually change state to 'home' for the same reason.
+      _currentScreen = AppScreen.home;
+      notifyListeners();
       return;
     }
 
     // 4. Default fallback (e.g., from Home, Welcome, Auth Screens)
-    navigate(AppScreen.home);
+    // FIX: Manually change state.
+    _currentScreen = AppScreen.home;
+    notifyListeners();
   }
 
   // --- Image Processing Flag ---
