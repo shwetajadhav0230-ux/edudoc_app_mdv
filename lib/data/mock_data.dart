@@ -14,10 +14,10 @@ const String samplePdf5 = 'lib/assets/pdfs/sample5.pdf';
 final List<Product> dummyProducts = [
   Product(
     id: 1,
-    type: 'Notes',
+    type: 'Study Material',
     title: 'Calculus I - Integrals',
     description:
-        'Comprehensive notes covering definite and indefinite integrals.',
+        'Comprehensive Study Material covering definite and indefinite integrals.',
     price: 50,
     isFree: false,
     category: 'Math',
@@ -34,7 +34,7 @@ final List<Product> dummyProducts = [
   ),
   Product(
     id: 2,
-    type: 'Books',
+    type: 'E-Books',
     title: 'Historical Atlas: WW2',
     description: 'Digital atlas with interactive maps and timelines.',
     price: 120,
@@ -54,7 +54,7 @@ final List<Product> dummyProducts = [
   ),
   Product(
     id: 3,
-    type: 'Journals',
+    type: 'E-Journals',
     title: 'Daily Gratitude Prompts',
     description: 'A 30-day journal template for mindfulness and productivity.',
     price: 0,
@@ -74,7 +74,7 @@ final List<Product> dummyProducts = [
   ),
   Product(
     id: 4,
-    type: 'Notes',
+    type: 'Study Material',
     title: 'React Hooks Deep Dive',
     description:
         'Advanced guide to custom hooks, state management, and performance optimization.',
@@ -139,7 +139,7 @@ final List<Product> dummyProducts = [
     id: 11,
     type: 'Resource',
     title: 'Generative AI Concepts',
-    description: 'Free notes on LLMs, Transformers, and VAEs.',
+    description: 'Free Study Material on LLMs, Transformers, and VAEs.',
     price: 0,
     isFree: true,
     category: 'Tech',
@@ -157,7 +157,7 @@ final List<Product> dummyProducts = [
   ),
   Product(
     id: 5,
-    type: 'Notes',
+    type: 'Study Material',
     title: 'Intro to Microeconomics',
     description:
         'Key concepts of supply, demand, market equilibrium, and basic economic models.',
@@ -178,7 +178,7 @@ final List<Product> dummyProducts = [
   ),
   Product(
     id: 6,
-    type: 'Books',
+    type: 'E-Books',
     title: 'The Art of Minimalist Design',
     description: 'Principles and case studies of modern minimalistic design.',
     price: 150,
@@ -198,10 +198,10 @@ final List<Product> dummyProducts = [
   ),
   Product(
     id: 7,
-    type: 'Notes',
+    type: 'Study Material',
     title: 'Data Structures & Algorithms',
     description:
-        'Detailed notes on Trees, Graphs, and Heaps for interview preparation.',
+        'Detailed Study Material on Trees, Graphs, and Heaps for interview preparation.',
     price: 90,
     isFree: false,
     category: 'Tech',
@@ -212,17 +212,17 @@ final List<Product> dummyProducts = [
     reviewCount: 55,
     imageUrl: 'https://picsum.photos/seed/algo/300/200',
     details:
-        'A rigorous set of notes focused on preparing for technical interviews. Includes complexity analysis and common interview questions.',
+        'A rigorous set of Study Material focused on preparing for technical interviews. Includes complexity analysis and common interview questions.',
     content:
         '## Binary Search Trees (BST)\nA node-based binary tree data structure where the left subtree has keys < parent key and the right subtree has keys > parent key.',
     pdfUrl: samplePdf5,
   ),
   Product(
     id: 8,
-    type: 'Notes',
+    type: 'Study Material',
     title: 'The Solar System Explained',
     description:
-        'Notes on planetary science, basic astrophysics, and space exploration.',
+        'Study Material on planetary science, basic astrophysics, and space exploration.',
     price: 0,
     isFree: true,
     category: 'Science',

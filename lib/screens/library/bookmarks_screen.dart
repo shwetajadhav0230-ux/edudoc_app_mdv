@@ -37,7 +37,8 @@ class BookmarksScreen extends StatelessWidget {
             (p) => Card(
               child: ListTile(
                 leading: Icon(
-                  Icons.bookmark,
+                  // FIX: Changed to heart icon (favorite) to match UI convention
+                  Icons.favorite,
                   color: theme.colorScheme.secondary,
                 ),
                 title: Text(p.title),

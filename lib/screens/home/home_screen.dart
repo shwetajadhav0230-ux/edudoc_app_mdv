@@ -1,8 +1,8 @@
 // home_screen.dart
 
+import 'dart:async'; // Import for Timer
 // Auto-generated screen from main.dart
 import 'dart:math';
-import 'dart:async'; // Import for Timer
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,10 +10,9 @@ import 'package:provider/provider.dart';
 import '../../data/mock_data.dart';
 import '../../models/product.dart';
 import '../../state/app_state.dart';
-
+import '../../widgets/custom_widgets/library_shelf_card.dart';
 // --- Importing all card types used on this screen ---
 import '../../widgets/custom_widgets/product_card.dart';
-import '../../widgets/custom_widgets/library_shelf_card.dart';
 
 // --- Converted to StatefulWidget ---
 class HomeScreen extends StatefulWidget {
@@ -118,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(blue: 2),
+        color: Colors.black.withOpacity(0.5),
         shape: BoxShape.circle,
       ),
       child: IconButton(
@@ -137,22 +136,26 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: isActive
             ? Theme.of(context).colorScheme.primary
-            : Colors.blueGrey.withValues(blue: 10),
+            : Colors.blueGrey.withOpacity(0.5),
         borderRadius: BorderRadius.circular(10),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
+    // 🚀 FIX APPLIED HERE: Using toLowerCase() for robust, case-insensitive filtering
     final filteredProducts = dummyProducts.where((p) {
-      if (appState.homeFilter == 'all') return true;
-      if (appState.homeFilter == 'Free') return p.isFree;
-      return p.type == appState.homeFilter;
+      final currentFilter = appState.homeFilter;
+
+      if (currentFilter == 'All') return true;
+      if (currentFilter == 'Free') return p.isFree;
+
+      // Compare the lowercase version of the product type to the lowercase version of the filter
+      return p.type.toLowerCase() == currentFilter.toLowerCase();
     }).toList();
 
     final startIndex = (appState.homeCurrentPage - 1) * appState.itemsPerPage;
@@ -161,14 +164,14 @@ class _HomeScreenState extends State<HomeScreen> {
       filteredProducts.length,
     );
     final productsToDisplay =
-    (filteredProducts.isNotEmpty && startIndex < endIndex)
-        ? filteredProducts.sublist(startIndex, endIndex)
-        : <Product>[];
+        (filteredProducts.isNotEmpty && startIndex < endIndex)
+            ? filteredProducts.sublist(startIndex, endIndex)
+            : <Product>[];
 
     final totalPages = (filteredProducts.length / appState.itemsPerPage).ceil();
 
-    final List<Product> ownedProductsForShelf = appState.ownedProductIds
-        .expand((id) {
+    final List<Product> ownedProductsForShelf =
+        appState.ownedProductIds.expand((id) {
       try {
         final product = dummyProducts.firstWhere((p) => p.id == id);
         return [product];
@@ -275,22 +278,22 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 200,
             child: ownedProductsForShelf.isEmpty
                 ? const Center(
-              child: Text(
-                'Your library is empty. Purchase a document to see it here.',
-              ),
-            )
+                    child: Text(
+                      'Your library is empty. Purchase a document to see it here.',
+                    ),
+                  )
                 : ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: ownedProductsForShelf.length,
-              itemBuilder: (context, index) {
-                final product = ownedProductsForShelf[index];
-                return Container(
-                  width: 150,
-                  margin: const EdgeInsets.only(right: 12),
-                  child: LibraryShelfCard(product: product),
-                );
-              },
-            ),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: ownedProductsForShelf.length,
+                    itemBuilder: (context, index) {
+                      final product = ownedProductsForShelf[index];
+                      return Container(
+                        width: 150,
+                        margin: const EdgeInsets.only(right: 12),
+                        child: LibraryShelfCard(product: product),
+                      );
+                    },
+                  ),
           ),
           const SizedBox(height: 16),
 
@@ -298,32 +301,28 @@ class _HomeScreenState extends State<HomeScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['all', 'Notes', 'Books', 'Journals', 'Free']
-                  .map(
-                    (filter) => Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ActionChip(
-                    label: Text(
-                      filter,
-                      style: TextStyle(
-                        color: appState.homeFilter == filter
-                            ? Colors.white
-                            : theme.textTheme.bodyMedium?.color,
-                      ),
-                    ),
-                    color: WidgetStateProperty.resolveWith<Color>((
-                        Set<WidgetState> states,
-                        ) {
-                      if (appState.homeFilter == filter) {
-                        return theme.colorScheme.primary;
-                      }
-                      return theme.cardColor;
-                    }),
-                    onPressed: () => appState.applyHomeFilter(filter),
-                  ),
-                ),
-              )
-                  .toList(),
+              children:
+                  ['All', 'Study Material', 'E-Books', 'E-Journals', 'Free']
+                      .map(
+                        (filter) => Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ActionChip(
+                            label: Text(
+                              filter,
+                              style: TextStyle(
+                                color: appState.homeFilter == filter
+                                    ? Colors.white
+                                    : theme.textTheme.bodyMedium?.color,
+                              ),
+                            ),
+                            backgroundColor: appState.homeFilter == filter
+                                ? theme.colorScheme.primary
+                                : theme.cardColor,
+                            onPressed: () => appState.applyHomeFilter(filter),
+                          ),
+                        ),
+                      )
+                      .toList(),
             ),
           ),
           const SizedBox(height: 16),
@@ -361,7 +360,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? null
                     : () => appState.goToPage(appState.homeCurrentPage - 1),
               ),
-
               ...List.generate(totalPages, (index) {
                 final page = index + 1;
                 return Padding(
@@ -387,7 +385,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               }),
-
               IconButton(
                 icon: Icon(Icons.arrow_forward_ios, size: 16),
                 onPressed: appState.homeCurrentPage == totalPages
