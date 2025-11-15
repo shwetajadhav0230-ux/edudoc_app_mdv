@@ -14,10 +14,10 @@ class ProductCard extends StatelessWidget {
 
   // Fixed padding for non-responsive sizing
   final EdgeInsets _contentPadding =
-      const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0);
+      const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0);
 
   // Fixed image height for the non-responsive vertical layout
-  final double _fixedCoverHeight = 150.0;
+  final double _fixedCoverHeight = 100.0;
 
   // Map for displaying custom category labels
   final Map<String, String> _typeLabelMap = const {
@@ -134,7 +134,7 @@ class ProductCard extends StatelessWidget {
             child: Icon(
               Icons.play_circle_fill_rounded,
               color: Colors.white,
-              size: 40,
+              size: 30,
             ),
           ),
         ),
@@ -217,7 +217,7 @@ class ProductCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+          Icon(Icons.star_rounded, color: Colors.amber, size: 15),
           const SizedBox(width: 4),
           Text(
             product.rating.toString(),
@@ -311,7 +311,7 @@ class ProductCard extends StatelessWidget {
           Icon(
             Icons.monetization_on_rounded,
             color: Colors.amber,
-            size: 18,
+            size: 15,
           ),
           const SizedBox(width: 6),
           Text(
@@ -331,8 +331,8 @@ class ProductCard extends StatelessWidget {
     final appState = Provider.of<AppState>(context, listen: false);
 
     return Container(
-      width: 40,
-      height: 40,
+      width: 35,
+      height: 35,
       decoration: BoxDecoration(
         color: const Color(0xFF4C4268),
         borderRadius: BorderRadius.circular(12),
@@ -351,19 +351,19 @@ class ProductCard extends StatelessWidget {
         child: Icon(
           Icons.shopping_cart_outlined,
           color: Colors.white.withOpacity(0.8),
-          size: 22,
+          size: 20,
         ),
       ),
     );
   }
 
   Widget _buildBuyButton(ThemeData theme, BuildContext context) {
-    // FIX: Add product to cart and navigate to CartScreen (payment gateway)
+    // FIX: Handle FREE products by adding them directly to the library.
     final appState = Provider.of<AppState>(context, listen: false);
 
     return Container(
-      width: 40,
-      height: 40,
+      width: 35,
+      height: 35,
       decoration: BoxDecoration(
         color: theme.colorScheme.secondary,
         borderRadius: BorderRadius.circular(12),
@@ -371,13 +371,28 @@ class ProductCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          appState.addToCart(product);
-          appState.navigate(AppScreen.cart); // Navigate to cart/checkout
+          if (product.isFree) {
+            // If the product is FREE, skip the cart/checkout process and add directly to the library.
+            // NOTE: You must implement appState.addToLibrary(product) in your AppState class.
+            // This is equivalent to "Download Now"
+            appState.addToLibrary(product);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Successfully added "${product.title}" to your Library!'),
+                duration: const Duration(milliseconds: 2000),
+              ),
+            );
+          } else {
+            // For paid products, proceed with adding to cart and navigating to checkout.
+            appState.addToCart(product);
+            appState.navigate(AppScreen.cart); // Navigate to cart/checkout
+          }
         },
         child: Icon(
           Icons.shopping_bag_outlined,
           color: Colors.white,
-          size: 22,
+          size: 20,
         ),
       ),
     );

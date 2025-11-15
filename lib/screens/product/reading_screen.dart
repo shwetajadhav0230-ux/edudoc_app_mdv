@@ -375,11 +375,13 @@ class ContentsDialog extends StatelessWidget {
 class NetworkPDFViewerScreen extends StatefulWidget {
   final String pdfUrl;
   final String title;
+  final String author; // NEW: Added author field
 
   const NetworkPDFViewerScreen({
     super.key,
     required this.pdfUrl,
     required this.title,
+    required this.author, // NEW: Required in constructor
   });
 
   @override
@@ -469,7 +471,7 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
         final bytes = await _fetchPdfBytes(widget.pdfUrl);
         return PdfDocument.openData(bytes);
       } catch (e) {
-        throw Exception('Failed to load network PDF: $e');
+        throw Exception('Network error: $e');
       }
     }
   }
@@ -512,7 +514,7 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
   }
 
   void _jumpToPage(int page) {
-    if (_pdfController != null && page >= 1 && page <= _totalPages) {
+    if (_controllerInitialized && page >= 1 && page <= _totalPages) {
       _pdfController.jumpToPage(page);
       setState(() {
         _currentPage = page;
@@ -520,15 +522,11 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
     }
   }
 
-  // Custom back handler
-  void _goBack() {
-    Navigator.of(context).pop();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkTheme = theme.brightness == Brightness.dark;
+    // Use AppState for back navigation via AppBar
+    final appState = Provider.of<AppState>(context, listen: false);
 
     // SIMPLIFIED UI COLORS
     const Color toolbarColor = Colors.white;
@@ -542,10 +540,10 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
         backgroundColor: toolbarColor,
         elevation: 1,
 
-        // CRITICAL FIX: Replace three lines icon with back button
+        // CRITICAL FIX: Use appState.navigateBack() for back navigation
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: iconColor),
-          onPressed: _goBack, // Navigate back to the list screen
+          onPressed: () => appState.navigateBack(),
         ),
 
         title: Column(
@@ -559,9 +557,10 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
               ),
               overflow: TextOverflow.ellipsis,
             ),
-            const Text(
-              'Emma St. Clair', // Placeholder for author/subtitle
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            // FIX 2: Use the dynamic author name passed via widget
+            Text(
+              widget.author,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             Text(
               'Chapter 1 :: page $_currentPage/$_totalPages', // Dynamic page info
@@ -570,7 +569,7 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
           ],
         ),
 
-        // REMOVE ALL ACTIONS (Bookmark, New Release, Audio, Search, Settings, Overflow)
+        // FIX: Remove the Settings icon and Contents icon (three lines)
         actions: const [],
       ),
 
@@ -614,7 +613,7 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
       ),
 
       // Call the correctly defined _buildBody method
-      body: _buildBody(isDarkTheme),
+      body: _buildBody(theme.brightness == Brightness.dark),
     );
   }
 
@@ -714,16 +713,22 @@ class _NetworkPDFViewerScreenState extends State<NetworkPDFViewerScreen> {
 class PDFViewerScreen extends StatelessWidget {
   final String pdfUrl;
   final String title;
+  final String author;
 
-  const PDFViewerScreen({super.key, required this.pdfUrl, required this.title});
+  const PDFViewerScreen(
+      {super.key,
+      required this.pdfUrl,
+      required this.title,
+      required this.author});
 
   @override
   Widget build(BuildContext context) {
-    return NetworkPDFViewerScreen(pdfUrl: pdfUrl, title: title);
+    // Pass author to the NetworkPDFViewerScreen
+    return NetworkPDFViewerScreen(pdfUrl: pdfUrl, title: title, author: author);
   }
 }
 
-// --- READING SCREEN (List of PDFs) ---
+// --- READING SCREEN (LIST/SINGLE DOCUMENT ROUTER) ---
 class ReadingScreen extends StatelessWidget {
   const ReadingScreen({super.key});
 
@@ -732,7 +737,30 @@ class ReadingScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
-    // Get document data safely
+    // 1. Get the ID of the product navigated from (set by ProductDetailScreen)
+    final productIdString = appState.selectedProductId;
+    final productId = int.tryParse(productIdString ?? '');
+
+    // 2. Conditional Logic: If a specific ID is present, navigate directly to the viewer.
+    if (productId != null) {
+      final product = dummyProducts.firstWhere(
+        (p) => p.id == productId,
+        // Fallback or error handling for missing product
+        orElse: () => dummyProducts.first,
+      );
+
+      // Check if PDF URL is available
+      if (product.pdfUrl != null && product.pdfUrl!.isNotEmpty) {
+        // Direct return to PDFViewerScreen, passing the correct author
+        return PDFViewerScreen(
+          pdfUrl: product.pdfUrl!,
+          title: product.title,
+          author: product.author, // PASS THE CORRECT AUTHOR
+        );
+      }
+    }
+
+    // 3. Fallback: Show the list of documents (or if PDF URL was missing)
     final List<Map<String, String?>> pdfDocuments = dummyProducts
         .where((p) => p.pdfUrl != null)
         .map((p) => {
@@ -826,12 +854,15 @@ class ReadingScreen extends StatelessWidget {
                     ),
                     onTap: () {
                       if (doc['pdfUrl'] != null && doc['pdfUrl']!.isNotEmpty) {
+                        // For list view items, directly push the PDF viewer
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => PDFViewerScreen(
                               pdfUrl: doc['pdfUrl']!,
                               title: doc['title'] ?? 'PDF Document',
+                              author: doc['author'] ??
+                                  'Unknown Author', // PASS THE CORRECT AUTHOR
                             ),
                           ),
                         );

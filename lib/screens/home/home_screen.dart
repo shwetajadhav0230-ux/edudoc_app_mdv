@@ -1,5 +1,4 @@
 // home_screen.dart
-
 import 'dart:async'; // Import for Timer
 // Auto-generated screen from main.dart
 import 'dart:math';
@@ -77,6 +76,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- FIX 1: Responsive Helper Method for GridView crossAxisCount ---
+  int _getCrossAxisCount(double screenWidth) {
+    if (screenWidth < 600) {
+      // Mobile (< 600px): 1-2 cards/row -> Using 2
+      return 2;
+    } else if (screenWidth < 900) {
+      // Tablet (600-900px): 2-3 cards/row -> Using 3
+      return 3;
+    } else {
+      // Desktop (> 900px): 3-4 cards/row -> Using 4
+      return 4;
+    }
+  }
+
   Widget _buildOfferCard({
     required BuildContext context,
     required AppState appState,
@@ -147,6 +160,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
+    // --- Determine screen width and responsive count ---
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = _getCrossAxisCount(screenWidth);
+
     // 🚀 FIX APPLIED HERE: Using toLowerCase() for robust, case-insensitive filtering
     final filteredProducts = dummyProducts.where((p) {
       final currentFilter = appState.homeFilter;
@@ -180,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }).toList();
 
+    // FIX 3: SingleChildScrollView is the parent, making the entire screen scrollable.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -269,33 +287,30 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
 
           // --- My Library Shelf ---
-          Text(
-            'My Library',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 200,
-            child: ownedProductsForShelf.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Your library is empty. Purchase a document to see it here.',
-                    ),
-                  )
-                : ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: ownedProductsForShelf.length,
-                    itemBuilder: (context, index) {
-                      final product = ownedProductsForShelf[index];
-                      return Container(
-                        width: 150,
-                        margin: const EdgeInsets.only(right: 12),
-                        child: LibraryShelfCard(product: product),
-                      );
-                    },
-                  ),
-          ),
-          const SizedBox(height: 16),
+          if (ownedProductsForShelf.isNotEmpty) ...[
+            Text(
+              'My Library',
+              style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: ownedProductsForShelf.length,
+                itemBuilder: (context, index) {
+                  final product = ownedProductsForShelf[index];
+                  return Container(
+                    width: 150,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: LibraryShelfCard(product: product),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // --- End My Library Shelf ---
 
           // --- Filters ---
           SingleChildScrollView(
@@ -334,13 +349,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           GridView.builder(
+            // FIX 4: Set shrinkWrap and physics to prevent nested scrolling conflicts
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              // FIX 1: Use dynamic crossAxisCount
+              crossAxisCount: crossAxisCount,
               crossAxisSpacing: 16.0,
               mainAxisSpacing: 16.0,
-              // --- MODIFICATION: Changed to 0.75 to make the card taller ---
+              // Child aspect ratio remains the same to maintain vertical shape
               childAspectRatio: 0.75,
             ),
             itemCount: productsToDisplay.length,

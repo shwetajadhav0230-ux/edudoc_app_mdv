@@ -67,7 +67,8 @@ class AppState extends ChangeNotifier {
   // --- User/Profile State ---
   int _walletTokens = 450;
   final List<Product> _cartItems = [];
-  final List<int> _bookmarkedProductIds = [1, 6];
+  final List<int> _bookmarkedProductIds =
+      []; // FIX: Initialized as empty list to remove default wishlisted items
   final List<int> _ownedProductIds = [101, 102]; // Library/Purchased items
 
   // FIX: User object used for profile management
@@ -89,7 +90,7 @@ class AppState extends ChangeNotifier {
   bool _showPasswordUnlock = false;
 
   // --- Home/Search State ---
-  String _homeFilter = 'all';
+  String _homeFilter = 'All';
   int _homeCurrentPage = 1;
   final int itemsPerPage = 6;
 
@@ -131,9 +132,12 @@ class AppState extends ChangeNotifier {
   // --- Navigation & Routing ---
   void navigate(AppScreen screen, {String? id}) {
     if (_currentScreen != AppScreen.reading &&
-        _currentScreen != AppScreen.lockUnlock) {
+        _currentScreen != AppScreen.lockUnlock &&
+        _currentScreen != AppScreen.productDetails &&
+        _currentScreen != AppScreen.offerDetails) {
       _previousPage = _currentScreen;
     }
+
     _currentScreen = screen;
     _selectedProductId =
         (screen == AppScreen.productDetails || screen == AppScreen.reading)
@@ -144,7 +148,16 @@ class AppState extends ChangeNotifier {
   }
 
   void navigateBack() {
-    // 1. Deep Settings Screens: always go back to AppScreen.settings
+    // 1. Special Handling: Going back from the Reader Screen
+    // Go directly back to Product Details, keeping the ID set.
+    if (_currentScreen == AppScreen.reading) {
+      _currentScreen = AppScreen.productDetails;
+      // DO NOT CLEAR _selectedProductId here, it's needed for ProductDetailsScreen to load
+      notifyListeners();
+      return;
+    }
+
+    // 2. Deep Settings Screens: always go back to AppScreen.settings
     if (_currentScreen == AppScreen.emailManagement ||
         _currentScreen == AppScreen.changePassword ||
         _currentScreen == AppScreen.about ||
@@ -155,23 +168,31 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    // 2. Secondary Screens (opened from home/profile) that go back to previous page
-    if (_currentScreen == AppScreen.reading ||
-        _currentScreen == AppScreen.productDetails ||
-        _currentScreen == AppScreen.offerDetails ||
-        _currentScreen == AppScreen.userActivity ||
-        _currentScreen == AppScreen.wallet ||
-        _currentScreen == AppScreen.search) {
-      // FIX: Manually change state instead of calling navigate() to avoid
-      // navigate() from overwriting _previousPage with the current screen.
+    // 3. Product Details / Offer Details (Leaving the detail view and returning to a main tab)
+    if (_currentScreen == AppScreen.productDetails ||
+        _currentScreen == AppScreen.offerDetails) {
+      // Manually set the destination back to the stable previous page.
       _currentScreen = _previousPage;
-      _selectedProductId = null; // Clear IDs for back navigation
-      _selectedOfferId = null; // Clear IDs for back navigation
+
+      // CRITICAL FIX: Clear product and offer IDs when leaving the detail views.
+      _selectedProductId = null;
+      _selectedOfferId = null;
+
       notifyListeners();
       return;
     }
 
-    // 3. Top-level screens/tabs that go back to Home
+    // 4. Secondary Screens (User Activity, Wallet, Search) that go back to previous page
+    if (_currentScreen == AppScreen.userActivity ||
+        _currentScreen == AppScreen.wallet ||
+        _currentScreen == AppScreen.search) {
+      // Manually set the destination back to the previous page.
+      _currentScreen = _previousPage;
+      notifyListeners();
+      return;
+    }
+
+    // 5. Top-level screens/tabs that go back to Home
     if (_currentScreen == AppScreen.settings ||
         _currentScreen == AppScreen.profileEdit ||
         _currentScreen == AppScreen.library ||
@@ -185,7 +206,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    // 4. Default fallback (e.g., from Home, Welcome, Auth Screens)
+    // 6. Default fallback (e.g., from Home, Welcome, Auth Screens)
     // FIX: Manually change state.
     _currentScreen = AppScreen.home;
     notifyListeners();
@@ -331,6 +352,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // NEW METHOD: Adds a free product directly to the user's library (owned products)
+  void addToLibrary(Product product) {
+    // 1. Add product to owned list if it's not already there.
+    if (!_ownedProductIds.contains(product.id)) {
+      _ownedProductIds.add(product.id);
+
+      // 2. Create a 'Download' transaction record (as it's free)
+      final newTx = Transaction(
+        id: DateTime.now().millisecondsSinceEpoch + product.id, // Unique ID
+        type: 'Download',
+        amount: 0, // Free product
+        date: 'Nov 4, 2025', // Using a mock date
+        description: 'Downloaded ${product.title}',
+      );
+
+      // 3. Add transaction to the list (at the top)
+      _transactionHistory.insert(0, newTx);
+
+      notifyListeners();
+    }
+  }
+
   // INTEGRATED FIX: Method to add the Annual Pro Pack
   void addProPackToCart() {
     final proPack = Product(
@@ -412,19 +455,22 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // FIX: Checkout now adds purchased items to the *Library* list (`_ownedProductIds`)
+  // FIX: Checkout now adds ALL purchased/downloaded (non-subscription/bundle) items
+  // to the *Library* list (`_ownedProductIds`), including free items.
   void checkout() {
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
     // MODIFIED: Check if cart is empty after checking cost
     if (totalCost > _walletTokens || _cartItems.isEmpty) return;
 
-    _walletTokens -= totalCost;
+    // Only debit tokens if the total cost is > 0
+    if (totalCost > 0) {
+      _walletTokens -= totalCost;
+    }
 
     for (var item in _cartItems) {
-      // Logic: Only add purchased products to the library (ownedProductIds)
-      // (Don't add subscriptions/bundles to the library)
-      if (!item.isFree &&
-          item.type != 'Subscription' &&
+      // Logic: Add to the library if it's NOT a subscription AND NOT a bundle.
+      // The `!item.isFree` check is REMOVED to include free items in the library.
+      if (item.type != 'Subscription' &&
           item.type != 'Bundle' &&
           !_ownedProductIds.contains(item.id)) {
         _ownedProductIds.add(item.id);
