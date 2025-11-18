@@ -400,6 +400,8 @@ class AppState extends ChangeNotifier {
   }
 
   // NEW METHOD: Adds all products in a specific bundle (Offer) to the cart.
+  // CRITICAL: We now store the list of bundled product IDs in the content field (as a placeholder)
+  // so checkout() can access it.
   void addBundleToCart(dynamic offer) {
     if (offer.status != 'Active') return;
 
@@ -407,6 +409,7 @@ class AppState extends ChangeNotifier {
     _cartItems.removeWhere((item) => item.id == 999 || item.id == offer.id);
 
     // Create a mock product representing the bundle itself for the cart/summary view
+    // The content field is used to temporarily store the product IDs of the bundle.
     final bundleProduct = Product(
       id: offer.id,
       type: 'Bundle',
@@ -421,7 +424,9 @@ class AppState extends ChangeNotifier {
       pages: offer.productIds.length,
       reviewCount: 0,
       details: 'Includes ${offer.productIds.length} documents.',
-      content: 'N/A',
+      // CRITICAL CHANGE: Store productIds list as a string or serialized data in content field
+      // Assuming productIds is List<int> and can be serialized simply:
+      content: offer.productIds.map((id) => id.toString()).join(','),
       imageUrl: '',
     );
 
@@ -455,40 +460,58 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // FIX: Checkout now adds ALL purchased/downloaded (non-subscription/bundle) items
-  // to the *Library* list (`_ownedProductIds`), including free items.
+  // FIX: Checkout now adds all bundled documents to the library.
   void checkout() {
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
-    // MODIFIED: Check if cart is empty after checking cost
     if (totalCost > _walletTokens || _cartItems.isEmpty) return;
 
-    // Only debit tokens if the total cost is > 0
     if (totalCost > 0) {
       _walletTokens -= totalCost;
     }
 
+    final List<int> productsToAddToLibrary = [];
+
     for (var item in _cartItems) {
-      // Logic: Add to the library if it's NOT a subscription AND NOT a bundle.
-      // The `!item.isFree` check is REMOVED to include free items in the library.
-      if (item.type != 'Subscription' &&
-          item.type != 'Bundle' &&
-          !_ownedProductIds.contains(item.id)) {
-        _ownedProductIds.add(item.id);
+      // Case 1: The item is a purchased document (not a subscription/bundle)
+      if (item.type != 'Subscription' && item.type != 'Bundle') {
+        productsToAddToLibrary.add(item.id);
       }
 
-      // Create a transaction for this purchase/download
+      // Case 2: The item is a purchased bundle
+      if (item.type == 'Bundle' &&
+          item.content != null &&
+          item.content!.isNotEmpty) {
+        // Retrieve product IDs from the content field and parse them as integers
+        try {
+          final List<int> bundledIds = item.content!
+              .split(',')
+              .map((idStr) => int.tryParse(idStr))
+              .whereType<int>() // Filters out any null results
+              .toList();
+          productsToAddToLibrary.addAll(bundledIds);
+        } catch (e) {
+          // Log error if parsing fails, but proceed
+        }
+      }
+
+      // Record Transaction
       final newTx = Transaction(
         id: DateTime.now().millisecondsSinceEpoch + item.id, // Unique ID
         type: item.isFree ? 'Download' : 'Debit',
         amount: item.price,
-        date: 'Nov 4, 2025', // Using a mock date
+        date: 'Nov 4, 2025',
         description: item.isFree
             ? 'Downloaded ${item.title}'
             : 'Purchased ${item.title}',
       );
-
-      // Add it to the list (at the top)
       _transactionHistory.insert(0, newTx);
+    }
+
+    // Add unique products to the user's library
+    for (int id in productsToAddToLibrary) {
+      if (!_ownedProductIds.contains(id)) {
+        _ownedProductIds.add(id);
+      }
     }
 
     _cartItems.clear();
