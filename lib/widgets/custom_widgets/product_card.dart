@@ -1,5 +1,6 @@
 // lib/widgets/custom_widgets/product_card.dart
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +16,7 @@ class ProductCard extends StatelessWidget {
   // Base padding
   final EdgeInsets _contentPadding =
   const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0);
+
   // Map for displaying custom category labels
   final Map<String, String> _typeLabelMap = const {
     'E-Books': 'E-Books',
@@ -38,7 +40,7 @@ class ProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: isLightMode
             ? BorderSide(color: Colors.grey.shade300, width: 1)
-            : BorderSide.none, // effectively none
+            : BorderSide.none,
       ),
       child: InkWell(
         onTap: onTap ??
@@ -74,9 +76,7 @@ class ProductCard extends StatelessWidget {
     final bool hasBoundedHeight = constraints.hasBoundedHeight;
     final double height = constraints.maxHeight;
 
-    // Dynamic cover height:
-    // - If we know the total height (e.g. GridView tile), use ~40% for the image
-    // - Else fallback to width-based ratio (e.g. ListView / Column)
+    // Dynamic cover height
     final double coverHeight = hasBoundedHeight && height.isFinite && height > 0
         ? height * 0.4
         : width * 0.6;
@@ -86,8 +86,7 @@ class ProductCard extends StatelessWidget {
     final int descMaxLines = isShortTile ? 1 : 2;
 
     if (!hasBoundedHeight) {
-      // 🧩 Case 1: Unbounded height (e.g. inside ListView / Column)
-      // Use a simple "natural" Column (no Expanded, no Spacer), so it sizes itself.
+      // Case 1: Unbounded height
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -114,8 +113,7 @@ class ProductCard extends StatelessWidget {
       );
     }
 
-    // 🧱 Case 2: Bounded height (e.g. GridView tiles)
-    // Use Expanded + Spacer so the bottom bar sticks to the bottom and we never overflow.
+    // Case 2: Bounded height (Grid tiles)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -132,13 +130,11 @@ class ProductCard extends StatelessWidget {
               children: [
                 _buildTitle(theme),
                 const SizedBox(height: 4),
-                // Description takes whatever vertical space is left but will
-                // shrink to fewer lines if the tile is short.
                 Flexible(
                   child: _buildDescription(theme, maxLines: descMaxLines),
                 ),
                 const SizedBox(height: 8),
-                const Spacer(), // Push actions to the bottom
+                const Spacer(),
                 _buildBottomActionRow(theme, context),
               ],
             ),
@@ -232,16 +228,19 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // 🔤 TITLE WITH AUTOSIZE
   Widget _buildTitle(ThemeData theme) {
-    return Text(
+    return AutoSizeText(
       product.title,
+      maxLines: 1,
+      minFontSize: 12,
+      maxFontSize: 18,
+      overflow: TextOverflow.ellipsis,
       style: theme.textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.bold,
         fontSize: 18,
         color: theme.colorScheme.primary,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -315,15 +314,17 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // 🔤 DESCRIPTION WITH AUTOSIZE
   Widget _buildDescription(ThemeData theme, {int maxLines = 2}) {
-    return Text(
+    return AutoSizeText(
       'An in-depth visual guide to the key events and\nbattles of the Second World War.',
+      maxLines: maxLines,
+      minFontSize: 10,
+      overflow: TextOverflow.ellipsis,
       style: theme.textTheme.bodySmall?.copyWith(
         color: Colors.white.withOpacity(0.7),
         fontSize: 12,
       ),
-      maxLines: maxLines,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -333,14 +334,20 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildBottomActionRow(ThemeData theme, BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        _buildPriceInfo(theme),
+        // Expanded so price text has bounded width -> AutoSizeText can scale
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _buildPriceInfo(theme),
+          ),
+        ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildCartButton(theme, context),
-            const SizedBox(width: 6),
+            const SizedBox(width: 10),
             _buildBuyButton(theme, context),
           ],
         ),
@@ -348,40 +355,44 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // 🔤 PRICE / FREE WITH AUTOSIZE & NO BACKGROUND CONTAINER
   Widget _buildPriceInfo(ThemeData theme) {
     if (product.isFree) {
-      return Text(
+      return AutoSizeText(
         'FREE',
+        maxLines: 1,
+        minFontSize: 10,
+        maxFontSize: 18,
         style: theme.textTheme.titleMedium?.copyWith(
           color: theme.colorScheme.tertiary,
           fontWeight: FontWeight.bold,
         ),
       );
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4C4268),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.monetization_on_rounded,
-            color: Colors.amber,
-            size: 15,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '${product.price.toString()} ',
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.monetization_on_rounded,
+          color: Colors.amber,
+          size: 15,
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: AutoSizeText(
+            '${product.price.toString()}',
+            maxLines: 1,
+            minFontSize: 10,
+            maxFontSize: 18,
+            overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
