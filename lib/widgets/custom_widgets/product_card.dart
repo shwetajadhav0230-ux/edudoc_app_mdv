@@ -12,13 +12,9 @@ class ProductCard extends StatelessWidget {
 
   const ProductCard({super.key, required this.product, this.onTap});
 
-  // Fixed padding for non-responsive sizing
+  // Base padding
   final EdgeInsets _contentPadding =
-      const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0);
-
-  // Fixed image height for the non-responsive vertical layout
-  final double _fixedCoverHeight = 100.0;
-
+  const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0);
   // Map for displaying custom category labels
   final Map<String, String> _typeLabelMap = const {
     'E-Books': 'E-Books',
@@ -42,47 +38,110 @@ class ProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: isLightMode
             ? BorderSide(color: Colors.grey.shade300, width: 1)
-            : BorderSide.none,
+            : BorderSide.none, // effectively none
       ),
       child: InkWell(
         onTap: onTap ??
-            () => appState.navigate(AppScreen.productDetails,
-                id: product.id.toString()),
-
-        // Enforced non-responsive vertical layout
-        child: _buildVerticalLayout(theme, context, _contentPadding),
+                () => appState.navigate(
+              AppScreen.productDetails,
+              id: product.id.toString(),
+            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return _buildResponsiveVerticalLayout(
+              theme,
+              context,
+              _contentPadding,
+              constraints,
+            );
+          },
+        ),
       ),
     );
   }
 
   // ------------------------------------------------------------------
-  // 🔒 FIXED VERTICAL LAYOUT (Non-responsive)
+  // 🔄 RESPONSIVE VERTICAL LAYOUT
   // ------------------------------------------------------------------
 
-  Widget _buildVerticalLayout(
-      ThemeData theme, BuildContext context, EdgeInsets padding) {
-    // This layout is now static and will be used regardless of parent width.
+  Widget _buildResponsiveVerticalLayout(
+      ThemeData theme,
+      BuildContext context,
+      EdgeInsets padding,
+      BoxConstraints constraints,
+      ) {
+    final double width = constraints.maxWidth;
+    final bool hasBoundedHeight = constraints.hasBoundedHeight;
+    final double height = constraints.maxHeight;
+
+    // Dynamic cover height:
+    // - If we know the total height (e.g. GridView tile), use ~40% for the image
+    // - Else fallback to width-based ratio (e.g. ListView / Column)
+    final double coverHeight = hasBoundedHeight && height.isFinite && height > 0
+        ? height * 0.4
+        : width * 0.6;
+
+    // Decide how "tight" the card is vertically
+    final bool isShortTile = hasBoundedHeight && height < 200;
+    final int descMaxLines = isShortTile ? 1 : 2;
+
+    if (!hasBoundedHeight) {
+      // 🧩 Case 1: Unbounded height (e.g. inside ListView / Column)
+      // Use a simple "natural" Column (no Expanded, no Spacer), so it sizes itself.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildCoverImageWithOverlay(
+            theme,
+            context,
+            coverHeight: coverHeight,
+          ),
+          Padding(
+            padding: padding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTitle(theme),
+                const SizedBox(height: 6),
+                _buildDescription(theme, maxLines: descMaxLines),
+                const SizedBox(height: 12),
+                _buildBottomActionRow(theme, context),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // 🧱 Case 2: Bounded height (e.g. GridView tiles)
+    // Use Expanded + Spacer so the bottom bar sticks to the bottom and we never overflow.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Cover/Image Section (Uses fixed height)
-        _buildCoverImageWithOverlay(theme, context,
-            coverHeight: _fixedCoverHeight),
-
-        // 2. Content Section (Title, Desc, Actions)
-        Padding(
-          padding: padding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              _buildTitle(theme),
-              const SizedBox(height: 6),
-              _buildDescription(theme),
-              const SizedBox(height: 16),
-              _buildBottomActionRow(theme, context),
-            ],
+        _buildCoverImageWithOverlay(
+          theme,
+          context,
+          coverHeight: coverHeight,
+        ),
+        Expanded(
+          child: Padding(
+            padding: padding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTitle(theme),
+                const SizedBox(height: 4),
+                // Description takes whatever vertical space is left but will
+                // shrink to fewer lines if the tile is short.
+                Flexible(
+                  child: _buildDescription(theme, maxLines: descMaxLines),
+                ),
+                const SizedBox(height: 8),
+                const Spacer(), // Push actions to the bottom
+                _buildBottomActionRow(theme, context),
+              ],
+            ),
           ),
         ),
       ],
@@ -90,17 +149,19 @@ class ProductCard extends StatelessWidget {
   }
 
   // ------------------------------------------------------------------
-  // --- SHARED BUILDER METHODS (Updated Title and Type Chip) ---
+  // --- SHARED BUILDER METHODS ---
   // ------------------------------------------------------------------
 
-  Widget _buildCoverImageWithOverlay(ThemeData theme, BuildContext context,
-      {required double coverHeight}) {
-    // Determine the base image/placeholder
+  Widget _buildCoverImageWithOverlay(
+      ThemeData theme,
+      BuildContext context, {
+        required double coverHeight,
+      }) {
     Widget baseImage;
     if (product.imageUrl.isNotEmpty) {
       baseImage = Image.network(
         product.imageUrl,
-        height: coverHeight, // Fixed height
+        height: coverHeight,
         width: double.infinity,
         fit: BoxFit.cover,
         loadingBuilder: (ctx, child, progress) {
@@ -113,7 +174,6 @@ class ProductCard extends StatelessWidget {
         },
       );
     } else {
-      // Use the custom green placeholder if no URL is present
       baseImage =
           _buildGreenPlaceholder(theme, const Color(0xFF388E3C), coverHeight);
     }
@@ -121,14 +181,13 @@ class ProductCard extends StatelessWidget {
     return Stack(
       children: [
         baseImage,
-
-        // Overlays always use fixed positions
         Positioned(top: 10, left: 10, child: _buildTypeChip(theme)),
         Positioned(top: 50, left: 10, child: _buildRating(theme)),
         Positioned(
-            top: 10, right: 10, child: _buildBookmarkIcon(theme, context)),
-
-        // Play Button Overlay
+          top: 10,
+          right: 10,
+          child: _buildBookmarkIcon(theme, context),
+        ),
         const Positioned.fill(
           child: Center(
             child: Icon(
@@ -174,7 +233,6 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildTitle(ThemeData theme) {
-    // IMPLEMENTATION: Heading color differentiation (using theme primary color)
     return Text(
       product.title,
       style: theme.textTheme.titleMedium?.copyWith(
@@ -188,7 +246,6 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildTypeChip(ThemeData theme) {
-    // IMPLEMENTATION: Map product.type to the new required label
     final displayType = _typeLabelMap[product.type] ?? product.type;
 
     return Container(
@@ -198,7 +255,7 @@ class ProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: Text(
-        displayType, // Use mapped label
+        displayType,
         style: theme.textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.bold,
           color: Colors.white.withOpacity(0.8),
@@ -217,7 +274,7 @@ class ProductCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, color: Colors.amber, size: 15),
+          const Icon(Icons.star_rounded, color: Colors.amber, size: 15),
           const SizedBox(width: 4),
           Text(
             product.rating.toString(),
@@ -258,33 +315,35 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDescription(ThemeData theme) {
-    // Descriptive text remains white/white.withOpacity(0.7)
+  Widget _buildDescription(ThemeData theme, {int maxLines = 2}) {
     return Text(
       'An in-depth visual guide to the key events and\nbattles of the Second World War.',
       style: theme.textTheme.bodySmall?.copyWith(
         color: Colors.white.withOpacity(0.7),
         fontSize: 12,
       ),
-      maxLines: 2,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
     );
   }
 
+  // ------------------------------------------------------------------
+  // 🔻 BOTTOM ACTION BAR
+  // ------------------------------------------------------------------
+
   Widget _buildBottomActionRow(ThemeData theme, BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildPriceInfo(theme),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildCartButton(theme, context),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _buildBuyButton(theme, context),
           ],
-        )
+        ),
       ],
     );
   }
@@ -308,7 +367,7 @@ class ProductCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.monetization_on_rounded,
             color: Colors.amber,
             size: 15,
@@ -327,7 +386,6 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildCartButton(ThemeData theme, BuildContext context) {
-    // FIX: Add product to cart
     final appState = Provider.of<AppState>(context, listen: false);
 
     return Container(
@@ -358,7 +416,6 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildBuyButton(ThemeData theme, BuildContext context) {
-    // FIX: Handle FREE products by adding them directly to the library.
     final appState = Provider.of<AppState>(context, listen: false);
 
     return Container(
@@ -372,24 +429,21 @@ class ProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () {
           if (product.isFree) {
-            // If the product is FREE, skip the cart/checkout process and add directly to the library.
-            // NOTE: You must implement appState.addToLibrary(product) in your AppState class.
-            // This is equivalent to "Download Now"
             appState.addToLibrary(product);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                    'Successfully added "${product.title}" to your Library!'),
+                  'Successfully added "${product.title}" to your Library!',
+                ),
                 duration: const Duration(milliseconds: 2000),
               ),
             );
           } else {
-            // For paid products, proceed with adding to cart and navigating to checkout.
             appState.addToCart(product);
-            appState.navigate(AppScreen.cart); // Navigate to cart/checkout
+            appState.navigate(AppScreen.cart);
           }
         },
-        child: Icon(
+        child: const Icon(
           Icons.shopping_bag_outlined,
           color: Colors.white,
           size: 20,
