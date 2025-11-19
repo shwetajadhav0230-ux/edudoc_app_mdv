@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// import '../../data/mock_data.dart'; // <-- REMOVED this import
+// import '../../data/mock_data.dart';
 import '../../state/app_state.dart';
 import '../../widgets/custom_widgets/buy_tokens_modal.dart' show BuyTokensModal;
-// NOTE: Assuming BuyTokensModal is imported/accessible
+import '../../services/payment_service.dart'; // <-- NEW: Import PaymentService
 
 class WalletScreen extends StatelessWidget {
   const WalletScreen({super.key});
@@ -39,7 +39,6 @@ class WalletScreen extends StatelessWidget {
                   style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
                 ),
               ),
-              // REMOVED: The section that displayed current tokens (e.g., "450 🪙") in the header line.
             ],
           ),
           const SizedBox(height: 16),
@@ -80,19 +79,15 @@ class WalletScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // MODIFIED: Display balance with icon (icon moved to be first)
+                  // Display balance with icon
                   Row(
                     children: [
                       Icon(
-                        Icons.monetization_on, // Chrome yellow coins stack icon
-                        color: theme
-                            .colorScheme
-                            .tertiary, // Using the tertiary color for the icon
+                        Icons.monetization_on,
+                        color: theme.colorScheme.tertiary,
                         size: 40,
                       ),
-                      const SizedBox(
-                        width: 8,
-                      ), // Spacing between icon and number
+                      const SizedBox(width: 8),
                       Text(
                         '${appState.walletTokens}',
                         style: TextStyle(
@@ -116,8 +111,7 @@ class WalletScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Column(
-            // --- MODIFICATION ---
-            children: appState.transactionHistory // <-- Changed to read from appState
+            children: appState.transactionHistory
                 .map(
                   (tx) => Card(
                 child: ListTile(
@@ -129,7 +123,6 @@ class WalletScreen extends StatelessWidget {
                   ),
                   title: Text(tx.description),
                   subtitle: Text(tx.date),
-                  // START MODIFICATION: Use Row for price and button
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -146,16 +139,17 @@ class WalletScreen extends StatelessWidget {
                           icon: Icon(Icons.refresh, color: theme.colorScheme.primary, size: 20),
                           tooltip: 'Rebuy Tokens',
                           onPressed: () {
-                            // Opens the standard token purchase modal
-                            showDialog(
-                              context: context,
-                              builder: (context) => const BuyTokensModal(),
+                            // MODIFIED: Direct payment gateway trigger for Rebuy
+                            PaymentService().payForTokens(
+                              context,
+                              tokens: tx.amount, // Use the amount from the transaction
+                              contact: appState.currentUser.phoneNumber,
+                              email: appState.currentUser.email,
                             );
                           },
                         ),
                     ],
                   ),
-                  // END MODIFICATION
                 ),
               ),
             )

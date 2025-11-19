@@ -130,9 +130,13 @@ class ProductCard extends StatelessWidget {
               children: [
                 _buildTitle(theme),
                 const SizedBox(height: 4),
-                Flexible(
-                  child: _buildDescription(theme, maxLines: descMaxLines),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: _buildDescription(theme, maxLines: descMaxLines),
+                  ),
                 ),
+
                 const SizedBox(height: 8),
                 const Spacer(),
                 _buildBottomActionRow(theme, context),

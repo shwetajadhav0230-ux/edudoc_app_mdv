@@ -1,12 +1,13 @@
 // lib/state/app_state.dart
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart'; // ADDED: For Native Sharing
+import 'package:url_launcher/url_launcher.dart'; // ADDED: For opening Links
 
 import '../data/mock_data.dart' as mock_data;
 import '../models/product.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
-
 // Note: Assuming Offer model is available in the scope of AppState
 
 enum AppScreen {
@@ -41,7 +42,9 @@ enum AppScreen {
 class AppState extends ChangeNotifier {
   // --- Global State ---
   AppScreen _currentScreen = AppScreen.welcome;
-  AppScreen _previousPage = AppScreen.home;
+  // CHANGED: Replaced single _previousPage with a proper history stack
+  final List<AppScreen> _historyStack = [];
+
   String _userRole = 'user';
   bool _isDarkTheme = true;
   String? _selectedProductId;
@@ -62,13 +65,12 @@ class AppState extends ChangeNotifier {
 
   // --- Transaction History State ---
   final List<Transaction> _transactionHistory =
-      mock_data.transactionHistory.toList();
+  mock_data.transactionHistory.toList();
 
   // --- User/Profile State ---
   int _walletTokens = 450;
   final List<Product> _cartItems = [];
-  final List<int> _bookmarkedProductIds =
-      []; // FIX: Initialized as empty list to remove default wishlisted items
+  final List<int> _bookmarkedProductIds = []; // FIX: Initialized as empty
   final List<int> _ownedProductIds = [101, 102]; // Library/Purchased items
 
   // FIX: User object used for profile management
@@ -129,86 +131,55 @@ class AppState extends ChangeNotifier {
   String? get selectedProductId => _selectedProductId;
   String? get selectedOfferId => _selectedOfferId;
 
-  // --- Navigation & Routing ---
+  // --- Navigation & Routing (REFACTORED) ---
   void navigate(AppScreen screen, {String? id}) {
-    if (_currentScreen != AppScreen.reading &&
-        _currentScreen != AppScreen.lockUnlock &&
-        _currentScreen != AppScreen.productDetails &&
-        _currentScreen != AppScreen.offerDetails) {
-      _previousPage = _currentScreen;
+    // 1. Define "Root" screens that clear history (Main Tabs)
+    final List<AppScreen> rootScreens = [
+      AppScreen.home,
+      AppScreen.library,
+      AppScreen.cart,
+      AppScreen.profile,
+      AppScreen.settings,
+      AppScreen.offers,
+    ];
+
+    // 2. If we are going to a Root screen, clear history (start fresh)
+    if (rootScreens.contains(screen)) {
+      _historyStack.clear();
+    }
+    // 3. Otherwise, if it's a detail screen, Save current screen to history
+    else if (_currentScreen != screen && _currentScreen != AppScreen.welcome) {
+      _historyStack.add(_currentScreen);
     }
 
+    // 4. Perform Navigation
     _currentScreen = screen;
-    _selectedProductId =
-        (screen == AppScreen.productDetails || screen == AppScreen.reading)
-            ? id
-            : null;
+
+    // Handle IDs
+    _selectedProductId = (screen == AppScreen.productDetails || screen == AppScreen.reading) ? id : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
+
     notifyListeners();
   }
 
   void navigateBack() {
-    // 1. Special Handling: Going back from the Reader Screen
-    // Go directly back to Product Details, keeping the ID set.
-    if (_currentScreen == AppScreen.reading) {
-      _currentScreen = AppScreen.productDetails;
-      // DO NOT CLEAR _selectedProductId here, it's needed for ProductDetailsScreen to load
-      notifyListeners();
-      return;
-    }
-
-    // 2. Deep Settings Screens: always go back to AppScreen.settings
-    if (_currentScreen == AppScreen.emailManagement ||
-        _currentScreen == AppScreen.changePassword ||
-        _currentScreen == AppScreen.about ||
-        _currentScreen == AppScreen.helpSupport) {
-      // Keep navigate() here as it correctly sets a new, fixed destination
-      // and updates the stack one level up.
-      navigate(AppScreen.settings);
-      return;
-    }
-
-    // 3. Product Details / Offer Details (Leaving the detail view and returning to a main tab)
-    if (_currentScreen == AppScreen.productDetails ||
-        _currentScreen == AppScreen.offerDetails) {
-      // Manually set the destination back to the stable previous page.
-      _currentScreen = _previousPage;
-
-      // CRITICAL FIX: Clear product and offer IDs when leaving the detail views.
-      _selectedProductId = null;
-      _selectedOfferId = null;
-
-      notifyListeners();
-      return;
-    }
-
-    // 4. Secondary Screens (User Activity, Wallet, Search) that go back to previous page
-    if (_currentScreen == AppScreen.userActivity ||
-        _currentScreen == AppScreen.wallet ||
-        _currentScreen == AppScreen.search) {
-      // Manually set the destination back to the previous page.
-      _currentScreen = _previousPage;
-      notifyListeners();
-      return;
-    }
-
-    // 5. Top-level screens/tabs that go back to Home
-    if (_currentScreen == AppScreen.settings ||
-        _currentScreen == AppScreen.profileEdit ||
-        _currentScreen == AppScreen.library ||
-        _currentScreen == AppScreen.cart ||
-        _currentScreen == AppScreen.profile ||
-        _currentScreen == AppScreen.bookmarks ||
-        _currentScreen == AppScreen.offers) {
-      // FIX: Manually change state to 'home' for the same reason.
+    // 1. Safety check: If stack is empty, default to Home
+    if (_historyStack.isEmpty) {
       _currentScreen = AppScreen.home;
       notifyListeners();
       return;
     }
 
-    // 6. Default fallback (e.g., from Home, Welcome, Auth Screens)
-    // FIX: Manually change state.
-    _currentScreen = AppScreen.home;
+    // 2. Pop the last screen from history
+    final previousScreen = _historyStack.removeLast();
+
+    // 3. Restore State
+    _currentScreen = previousScreen;
+
+    // Optional: Clear selection IDs if going back ensures we don't show stale data
+    _selectedProductId = null;
+    _selectedOfferId = null;
+
     notifyListeners();
   }
 
@@ -400,7 +371,7 @@ class AppState extends ChangeNotifier {
   }
 
   // NEW METHOD: Adds all products in a specific bundle (Offer) to the cart.
-  // CRITICAL: We now store the list of bundled product IDs in the content field (as a placeholder)
+  // CRITICAL: We now store the list of bundled product IDs in the content field
   // so checkout() can access it.
   void addBundleToCart(dynamic offer) {
     if (offer.status != 'Active') return;
@@ -409,7 +380,6 @@ class AppState extends ChangeNotifier {
     _cartItems.removeWhere((item) => item.id == 999 || item.id == offer.id);
 
     // Create a mock product representing the bundle itself for the cart/summary view
-    // The content field is used to temporarily store the product IDs of the bundle.
     final bundleProduct = Product(
       id: offer.id,
       type: 'Bundle',
@@ -424,8 +394,7 @@ class AppState extends ChangeNotifier {
       pages: offer.productIds.length,
       reviewCount: 0,
       details: 'Includes ${offer.productIds.length} documents.',
-      // CRITICAL CHANGE: Store productIds list as a string or serialized data in content field
-      // Assuming productIds is List<int> and can be serialized simply:
+      // CRITICAL CHANGE: Store productIds list as a string in content field
       content: offer.productIds.map((id) => id.toString()).join(','),
       imageUrl: '',
     );
@@ -490,7 +459,7 @@ class AppState extends ChangeNotifier {
               .toList();
           productsToAddToLibrary.addAll(bundledIds);
         } catch (e) {
-          // Log error if parsing fails, but proceed
+          debugPrint('Error parsing bundle IDs: $e');
         }
       }
 
