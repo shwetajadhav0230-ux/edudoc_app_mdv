@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../data/mock_data.dart';
+// import '../../data/mock_data.dart'; // REMOVED
 import '../../state/app_state.dart';
 
 class BookmarksScreen extends StatelessWidget {
@@ -12,9 +11,8 @@ class BookmarksScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
-    // This filters ONLY for items whose IDs are in the bookmarked list,
-    // fulfilling the 'wishlist' requirement.
-    final wishlistedProducts = dummyProducts
+    // Use appState.products
+    final wishlistedProducts = appState.products
         .where((p) => appState.bookmarkedProductIds.contains(p.id))
         .toList();
 
@@ -23,32 +21,18 @@ class BookmarksScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            // FIX: Updated title to reflect "Wishlist"
-            'My Wishlisted Documents',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
-          ),
+          Text('My Wishlisted Documents', style: theme.textTheme.titleLarge?.copyWith(fontSize: 24)),
           const SizedBox(height: 16),
           if (wishlistedProducts.isEmpty)
-            const Center(
-              child: Text('Your wishlist is empty. Add a document!'),
-            ),
+            const Center(child: Text('Your wishlist is empty. Add a document!')),
           ...wishlistedProducts.map(
-            (p) => Card(
+                (p) => Card(
               child: ListTile(
-                leading: Icon(
-                  // FIX: Changed to heart icon (favorite) to match UI convention
-                  Icons.favorite,
-                  color: theme.colorScheme.secondary,
-                ),
+                leading: Icon(Icons.favorite, color: theme.colorScheme.secondary),
                 title: Text(p.title),
                 subtitle: Text(p.author),
-                onTap: () => appState.navigate(
-                  AppScreen.productDetails,
-                  id: p.id.toString(),
-                ),
+                onTap: () => appState.navigate(AppScreen.productDetails, id: p.id.toString()),
                 trailing: IconButton(
-                  // Action is to remove from the wishlist/bookmarks
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => appState.toggleBookmark(p.id),
                 ),

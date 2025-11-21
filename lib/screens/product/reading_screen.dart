@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:pdfx/pdfx.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/mock_data.dart'
-    show dummyProducts; // Retained for ReadingScreen list
+
+   // Retained for ReadingScreen list
 import '../../state/app_state.dart'; // Retained for AppState usage
 
 // --- Helper Dialogs and Widgets ---
@@ -742,36 +742,43 @@ class ReadingScreen extends StatelessWidget {
     final productId = int.tryParse(productIdString ?? '');
 
     // 2. Conditional Logic: If a specific ID is present, navigate directly to the viewer.
-    if (productId != null) {
-      final product = dummyProducts.firstWhere(
-        (p) => p.id == productId,
-        // Fallback or error handling for missing product
-        orElse: () => dummyProducts.first,
-      );
-
-      // Check if PDF URL is available
-      if (product.pdfUrl != null && product.pdfUrl!.isNotEmpty) {
-        // Direct return to PDFViewerScreen, passing the correct author
-        return PDFViewerScreen(
-          pdfUrl: product.pdfUrl!,
-          title: product.title,
-          author: product.author, // PASS THE CORRECT AUTHOR
+    if (productId != null && appState.products.isNotEmpty) {
+      try {
+        // ✅ FIX: Use appState.products and compare with 'productId' (not widget.id)
+        final product = appState.products.firstWhere(
+              (p) => p.id == productId,
         );
+
+        // Check if PDF URL is available
+        if (product.pdfUrl != null && product.pdfUrl!.isNotEmpty) {
+          return PDFViewerScreen(
+            pdfUrl: product.pdfUrl!,
+            title: product.title,
+            author: product.author,
+          );
+        }
+      } catch (e) {
+        // If product not found, fall through to list view
       }
     }
 
-    // 3. Fallback: Show the list of documents (or if PDF URL was missing)
-    final List<Map<String, String?>> pdfDocuments = dummyProducts
-        .where((p) => p.pdfUrl != null)
+    // 3. Fallback: Show the list of documents (using dynamic data)
+    // ✅ FIX: Use appState.products instead of dummyProducts
+    final allProducts = appState.products;
+
+    // Get document data safely from DB products
+    final List<Map<String, String?>> pdfDocuments = allProducts
+        .where((p) => p.pdfUrl != null && p.pdfUrl!.isNotEmpty)
         .map((p) => {
-              'title': p.title,
-              'author': p.author,
-              'pdfUrl': p.pdfUrl,
-              'id': p.id.toString()
-            }) // Added id as String for safety
+      'title': p.title,
+      'author': p.author,
+      'pdfUrl': p.pdfUrl,
+      'id': p.id.toString()
+    })
         .toList();
 
     return Scaffold(
+      // ... (rest of the scaffold remains the same)
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -786,99 +793,71 @@ class ReadingScreen extends StatelessWidget {
       ),
       body: pdfDocuments.isEmpty
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.folder_open,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No PDF documents available.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                ],
-              ),
-            )
+        child: appState.isLoadingProducts
+            ? const CircularProgressIndicator() // Show loader if fetching
+            : Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              'No PDF documents available.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          ],
+        ),
+      )
           : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              itemCount: pdfDocuments.length,
-              itemBuilder: (context, index) {
-                final doc = pdfDocuments[index];
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 4.0,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
-                    ),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red[100],
-                        borderRadius: BorderRadius.circular(8),
+        // ... (rest of the list view builder remains exactly the same)
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        itemCount: pdfDocuments.length,
+        itemBuilder: (context, index) {
+          final doc = pdfDocuments[index];
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.picture_as_pdf, color: theme.colorScheme.secondary, size: 28),
+              ),
+              title: Text(
+                doc['title'] ?? 'Untitled Document',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                'By: ${doc['author'] ?? 'Unknown'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.blueGrey),
+              onTap: () {
+                if (doc['pdfUrl'] != null && doc['pdfUrl']!.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PDFViewerScreen(
+                        pdfUrl: doc['pdfUrl']!,
+                        title: doc['title'] ?? 'PDF Document',
+                        author: doc['author'] ?? 'Unknown Author',
                       ),
-                      child: Icon(
-                        Icons.picture_as_pdf,
-                        color: theme.colorScheme.secondary,
-                        size: 28,
-                      ),
                     ),
-                    title: Text(
-                      doc['title'] ?? 'Untitled Document',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      'By: ${doc['author'] ?? 'Unknown'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 18,
-                      color: Colors.blueGrey,
-                    ),
-                    onTap: () {
-                      if (doc['pdfUrl'] != null && doc['pdfUrl']!.isNotEmpty) {
-                        // For list view items, directly push the PDF viewer
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PDFViewerScreen(
-                              pdfUrl: doc['pdfUrl']!,
-                              title: doc['title'] ?? 'PDF Document',
-                              author: doc['author'] ??
-                                  'Unknown Author', // PASS THE CORRECT AUTHOR
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('PDF link is missing.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                );
+                  );
+                }
               },
             ),
+          );
+        },
+      ),
     );
   }
 }

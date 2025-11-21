@@ -1,19 +1,13 @@
-// home_screen.dart
-import 'dart:async'; // Import for Timer
-// Auto-generated screen from main.dart
+import 'dart:async';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../data/mock_data.dart';
+// import '../../data/mock_data.dart'; // REMOVED
 import '../../models/product.dart';
 import '../../state/app_state.dart';
 import '../../widgets/custom_widgets/library_shelf_card.dart';
-// --- Importing all card types used on this screen ---
 import '../../widgets/custom_widgets/product_card.dart';
 
-// --- Converted to StatefulWidget ---
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -22,24 +16,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // --- State variables for auto-scrolling carousel ---
   late final PageController _offerPageController;
   late final Timer _offerTimer;
   int _currentOfferPage = 0;
-  // Get the number of active offers
-  late final int _totalOfferPages;
 
   @override
   void initState() {
     super.initState();
-
-    _totalOfferPages =
-        dummyOffers.where((o) => o.status == 'Active').toList().length;
-
-    // Initialize the PageController
     _offerPageController = PageController(viewportFraction: 0.9);
-
-    // Start the 5-second timer
     _offerTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _nextPage();
     });
@@ -53,41 +37,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _nextPage() {
+    // Access current offers directly from context safely
+    if (!mounted) return;
+    final appState = Provider.of<AppState>(context, listen: false);
+    final activeOffers = appState.offers.where((o) => o.status == 'Active').toList();
+
+    if (activeOffers.isEmpty) return;
+
     int nextPage = _currentOfferPage + 1;
-    if (nextPage >= _totalOfferPages) {
-      nextPage = 0; // Loop back to the first page
+    if (nextPage >= activeOffers.length) {
+      nextPage = 0;
     }
-    _offerPageController.animateToPage(
-      nextPage,
-      duration: const Duration(milliseconds: 600), // Smooth transition
-      curve: Curves.easeInOut,
-    );
+
+    if (_offerPageController.hasClients) {
+      _offerPageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   void _prevPage() {
+    if (!mounted) return;
+    final appState = Provider.of<AppState>(context, listen: false);
+    final activeOffers = appState.offers.where((o) => o.status == 'Active').toList();
+
+    if (activeOffers.isEmpty) return;
+
     int prevPage = _currentOfferPage - 1;
     if (prevPage < 0) {
-      prevPage = _totalOfferPages - 1; // Loop back to the last page
+      prevPage = activeOffers.length - 1;
     }
-    _offerPageController.animateToPage(
-      prevPage,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOut,
-    );
+    if (_offerPageController.hasClients) {
+      _offerPageController.animateToPage(
+        prevPage,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
-  // --- FIX 1: Responsive Helper Method for GridView crossAxisCount ---
+  // ... [Keep _getCrossAxisCount, _buildOfferCard, _buildArrowButton, _buildPaginationDot helper methods unchanged] ...
   int _getCrossAxisCount(double screenWidth) {
-    if (screenWidth < 600) {
-      // Mobile (< 600px): 1-2 cards/row -> Using 2
-      return 2;
-    } else if (screenWidth < 900) {
-      // Tablet (600-900px): 2-3 cards/row -> Using 3
-      return 3;
-    } else {
-      // Desktop (> 900px): 3-4 cards/row -> Using 4
-      return 4;
-    }
+    if (screenWidth < 600) return 2;
+    else if (screenWidth < 900) return 3;
+    else return 4;
   }
 
   Widget _buildOfferCard({
@@ -106,37 +101,24 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 150,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              colors: gradientColors,
-            ),
+            gradient: LinearGradient(colors: gradientColors),
           ),
           alignment: Alignment.center,
           child: Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildArrowButton(BuildContext context,
-      {required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildArrowButton(BuildContext context, {required IconData icon, required VoidCallback onPressed}) {
     return Container(
       margin: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: Colors.white, size: 20),
-        onPressed: onPressed,
-      ),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+      child: IconButton(icon: Icon(icon, color: Colors.white, size: 20), onPressed: onPressed),
     );
   }
 
@@ -145,11 +127,9 @@ class _HomeScreenState extends State<HomeScreen> {
       duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(horizontal: 4.0),
       height: 8,
-      width: isActive ? 16 : 8, // Active dot is wider
+      width: isActive ? 16 : 8,
       decoration: BoxDecoration(
-        color: isActive
-            ? Theme.of(context).colorScheme.primary
-            : Colors.blueGrey.withOpacity(0.5),
+        color: isActive ? Theme.of(context).colorScheme.primary : Colors.blueGrey.withOpacity(0.5),
         borderRadius: BorderRadius.circular(10),
       ),
     );
@@ -159,139 +139,100 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
-
-    // --- Determine screen width and responsive count ---
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = _getCrossAxisCount(screenWidth);
 
-    // 🚀 FIX APPLIED HERE: Using toLowerCase() for robust, case-insensitive filtering
-    final filteredProducts = dummyProducts.where((p) {
-      final currentFilter = appState.homeFilter;
+    // 1. Get Data from AppState
+    final allProducts = appState.products;
+    final activeOffers = appState.offers.where((o) => o.status == 'Active').toList();
 
+    // 2. Loading State
+    if (appState.isLoadingProducts && allProducts.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // 3. Filter Products
+    final filteredProducts = allProducts.where((p) {
+      final currentFilter = appState.homeFilter;
       if (currentFilter == 'All') return true;
       if (currentFilter == 'Free') return p.isFree;
-
-      // Compare the lowercase version of the product type to the lowercase version of the filter
       return p.type.toLowerCase() == currentFilter.toLowerCase();
     }).toList();
 
+    // 4. Pagination Logic
     final startIndex = (appState.homeCurrentPage - 1) * appState.itemsPerPage;
-    final endIndex = min(
-      startIndex + appState.itemsPerPage,
-      filteredProducts.length,
-    );
-    final productsToDisplay =
-        (filteredProducts.isNotEmpty && startIndex < endIndex)
-            ? filteredProducts.sublist(startIndex, endIndex)
-            : <Product>[];
-
+    final endIndex = min(startIndex + appState.itemsPerPage, filteredProducts.length);
+    final productsToDisplay = (filteredProducts.isNotEmpty && startIndex < endIndex)
+        ? filteredProducts.sublist(startIndex, endIndex)
+        : <Product>[];
     final totalPages = (filteredProducts.length / appState.itemsPerPage).ceil();
 
-    final List<Product> ownedProductsForShelf =
-        appState.ownedProductIds.expand((id) {
+    // 5. Library Logic
+    final List<Product> ownedProductsForShelf = appState.ownedProductIds.expand((id) {
       try {
-        final product = dummyProducts.firstWhere((p) => p.id == id);
+        final product = allProducts.firstWhere((p) => p.id == id);
         return [product];
       } catch (e) {
         return <Product>[];
       }
     }).toList();
 
-    // FIX 3: SingleChildScrollView is the parent, making the entire screen scrollable.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Discover Premium Docs',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 24,
-              color: theme.colorScheme.primary,
-            ),
-          ),
+          Text('Discover Premium Docs', style: theme.textTheme.titleLarge?.copyWith(fontSize: 24, color: theme.colorScheme.primary)),
           const SizedBox(height: 16),
 
-          // --- Carousel Column ---
-          Column(
-            children: [
-              SizedBox(
-                height: 150,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    PageView(
-                      controller: _offerPageController,
-                      onPageChanged: (index) {
-                        setState(() {
-                          _currentOfferPage = index;
-                        });
-                      },
-                      children: [
-                        _buildOfferCard(
-                          context: context,
-                          appState: appState,
-                          theme: theme,
-                          title: '50% OFF\nBack-to-School Bundle!',
-                          gradientColors: [
-                            theme.colorScheme.primary,
-                            theme.colorScheme.secondary,
-                          ],
-                          onTap: () => appState.navigate(AppScreen.offerDetails,
-                              id: "201"),
-                        ),
-                        _buildOfferCard(
-                          context: context,
-                          appState: appState,
-                          theme: theme,
-                          title: '20% OFF\nAll Tech Docs Pack!',
-                          gradientColors: [
-                            Colors.teal.shade400,
-                            theme.colorScheme.primary,
-                          ],
-                          onTap: () => appState.navigate(AppScreen.offerDetails,
-                              id: "202"),
-                        ),
-                      ],
-                    ),
-                    Positioned(
-                      left: 0,
-                      child: _buildArrowButton(
-                        context,
-                        icon: Icons.arrow_back_ios_new,
-                        onPressed: _prevPage,
+          // --- Carousel (Use activeOffers) ---
+          if (activeOffers.isNotEmpty)
+            Column(
+              children: [
+                SizedBox(
+                  height: 150,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PageView.builder(
+                        controller: _offerPageController,
+                        onPageChanged: (index) => setState(() => _currentOfferPage = index),
+                        itemCount: activeOffers.length,
+                        itemBuilder: (context, index) {
+                          final offer = activeOffers[index];
+                          return _buildOfferCard(
+                            context: context,
+                            appState: appState,
+                            theme: theme,
+                            title: "${offer.discount} OFF\n${offer.title}",
+                            gradientColors: index % 2 == 0
+                                ? [theme.colorScheme.primary, theme.colorScheme.secondary]
+                                : [Colors.teal.shade400, theme.colorScheme.primary],
+                            onTap: () => appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
+                          );
+                        },
                       ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      child: _buildArrowButton(
-                        context,
-                        icon: Icons.arrow_forward_ios,
-                        onPressed: _nextPage,
-                      ),
-                    ),
-                  ],
+                      Positioned(left: 0, child: _buildArrowButton(context, icon: Icons.arrow_back_ios_new, onPressed: _prevPage)),
+                      Positioned(right: 0, child: _buildArrowButton(context, icon: Icons.arrow_forward_ios, onPressed: _nextPage)),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_totalOfferPages, (index) {
-                  return _buildPaginationDot(
-                    isActive: index == _currentOfferPage,
-                  );
-                }),
-              ),
-            ],
-          ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(activeOffers.length, (index) {
+                    return _buildPaginationDot(isActive: index == _currentOfferPage);
+                  }),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
 
-          // --- My Library Shelf ---
+          // ... [Keep Library Shelf, Filters, Product Grid, and Pagination UI unchanged] ...
+          // (Just ensure you use 'productsToDisplay', 'ownedProductsForShelf', etc calculated above)
+
           if (ownedProductsForShelf.isNotEmpty) ...[
-            Text(
-              'My Library',
-              style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
-            ),
+            Text('My Library', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
             const SizedBox(height: 8),
             SizedBox(
               height: 200,
@@ -310,72 +251,46 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          // --- End My Library Shelf ---
 
-          // --- Filters ---
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children:
-                  ['All', 'Study Material', 'E-Books', 'E-Journals', 'Free']
-                      .map(
-                        (filter) => Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: ActionChip(
-                            label: Text(
-                              filter,
-                              style: TextStyle(
-                                color: appState.homeFilter == filter
-                                    ? Colors.white
-                                    : theme.textTheme.bodyMedium?.color,
-                              ),
-                            ),
-                            backgroundColor: appState.homeFilter == filter
-                                ? theme.colorScheme.primary
-                                : theme.cardColor,
-                            onPressed: () => appState.applyHomeFilter(filter),
-                          ),
-                        ),
-                      )
-                      .toList(),
+              children: ['All', 'Study Material', 'E-Books', 'E-Journals', 'Free'].map(
+                    (filter) => Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ActionChip(
+                    label: Text(filter, style: TextStyle(color: appState.homeFilter == filter ? Colors.white : theme.textTheme.bodyMedium?.color)),
+                    backgroundColor: appState.homeFilter == filter ? theme.colorScheme.primary : theme.cardColor,
+                    onPressed: () => appState.applyHomeFilter(filter),
+                  ),
+                ),
+              ).toList(),
             ),
           ),
           const SizedBox(height: 16),
 
-          // --- Product Listings ---
-          Text(
-            'Popular Listings',
-            style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
-          ),
+          Text('Popular Listings', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
           const SizedBox(height: 8),
           GridView.builder(
-            // FIX 4: Set shrinkWrap and physics to prevent nested scrolling conflicts
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              // FIX 1: Use dynamic crossAxisCount
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 16.0,
               mainAxisSpacing: 16.0,
-              // Child aspect ratio remains the same to maintain vertical shape
               childAspectRatio: 0.75,
             ),
             itemCount: productsToDisplay.length,
-            itemBuilder: (context, index) {
-              return ProductCard(product: productsToDisplay[index]);
-            },
+            itemBuilder: (context, index) => ProductCard(product: productsToDisplay[index]),
           ),
 
           const SizedBox(height: 32),
-          // --- Pagination ---
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                icon: Icon(Icons.arrow_back_ios_new, size: 16),
-                onPressed: appState.homeCurrentPage == 1
-                    ? null
-                    : () => appState.goToPage(appState.homeCurrentPage - 1),
+                icon: const Icon(Icons.arrow_back_ios_new, size: 16),
+                onPressed: appState.homeCurrentPage == 1 ? null : () => appState.goToPage(appState.homeCurrentPage - 1),
               ),
               ...List.generate(totalPages, (index) {
                 final page = index + 1;
@@ -384,29 +299,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ElevatedButton(
                     onPressed: () => appState.goToPage(page),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: appState.homeCurrentPage == page
-                          ? theme.colorScheme.primary
-                          : theme.cardColor,
+                      backgroundColor: appState.homeCurrentPage == page ? theme.colorScheme.primary : theme.cardColor,
                       shape: const CircleBorder(),
                       padding: const EdgeInsets.all(0),
                       minimumSize: const Size(40, 40),
                     ),
-                    child: Text(
-                      '$page',
-                      style: TextStyle(
-                        color: appState.homeCurrentPage == page
-                            ? Colors.white
-                            : theme.textTheme.bodyMedium?.color,
-                      ),
-                    ),
+                    child: Text('$page', style: TextStyle(color: appState.homeCurrentPage == page ? Colors.white : theme.textTheme.bodyMedium?.color)),
                   ),
                 );
               }),
               IconButton(
-                icon: Icon(Icons.arrow_forward_ios, size: 16),
-                onPressed: appState.homeCurrentPage == totalPages
-                    ? null
-                    : () => appState.goToPage(appState.homeCurrentPage + 1),
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                onPressed: appState.homeCurrentPage == totalPages ? null : () => appState.goToPage(appState.homeCurrentPage + 1),
               ),
             ],
           ),

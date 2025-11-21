@@ -1,8 +1,7 @@
-import 'package:edudoc_app_mdv/models/product.dart' show Product;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../data/mock_data.dart';
+// import '../../data/mock_data.dart'; // REMOVED
+import '../../models/product.dart';
 import '../../state/app_state.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
@@ -16,63 +15,47 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   bool _showAllReviews = false;
   final int _initialReviewCount = 2;
 
-  // --- 1. Functional Helper Methods ---
-
-
-  void _handleAddToCart(
-      BuildContext context,
-      AppState appState,
-      Product product,
-      ) {
+  void _handleAddToCart(BuildContext context, AppState appState, Product product) {
     appState.addToCart(product);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.title} added to Cart.'),
-        duration: const Duration(milliseconds: 1000),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('${product.title} added to Cart.'),
+      duration: const Duration(milliseconds: 1000),
+    ));
   }
-
-  // --- 2. Main Widget Build ---
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
     final isDarkTheme = theme.brightness == Brightness.dark;
-
     final productId = int.tryParse(appState.selectedProductId ?? '') ?? 1;
-    final product = dummyProducts.firstWhere(
+
+    // Logic to handle loading/empty state
+    if (appState.products.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final product = appState.products.firstWhere(
           (p) => p.id == productId,
-      orElse: () => dummyProducts.first,
+      orElse: () => appState.products.first,
     );
 
     final isOwned = appState.ownedProductIds.contains(product.id);
     final priceText = product.isFree ? 'FREE' : '${product.price} Tokens';
     final Color readButtonColor = const Color(0xFF24E3C6);
-
     IconData typeIcon = product.type == 'Notes' ? Icons.note_alt : Icons.book;
     final bool hasCustomImage = product.imageUrl.isNotEmpty;
 
-    // --- Media Widget Logic ---
+    // ... [Keep helper widget buildPlaceholderMedia same as before] ...
     Widget buildPlaceholderMedia(IconData icon) {
       return Container(
         height: 180,
         decoration: BoxDecoration(
-          color: isDarkTheme
-              ? const Color(0xFF4C4435)
-              : theme.colorScheme.surfaceContainerHighest,
+          color: isDarkTheme ? const Color(0xFF4C4435) : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: 70,
-          color: isDarkTheme
-              ? const Color(0xFFC6A153)
-              : theme.colorScheme.primary.withAlpha(179),
-        ),
+        child: Icon(icon, size: 70, color: isDarkTheme ? const Color(0xFFC6A153) : theme.colorScheme.primary.withAlpha(179)),
       );
     }
 
@@ -80,59 +63,22 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     if (hasCustomImage) {
       mediaWidget = ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Image.network(
-          product.imageUrl,
-          height: 180,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => buildPlaceholderMedia(typeIcon),
-        ),
+        child: Image.network(product.imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover, errorBuilder: (c, e, s) => buildPlaceholderMedia(typeIcon)),
       );
     }
-    // --- End Media Widget Logic ---
 
-    // --- Reviews Logic ---
-    final int reviewsToDisplayCount = _showAllReviews
-        ? product.reviewCount
-        : _initialReviewCount;
-    final int effectiveReviewsCount =
-    reviewsToDisplayCount > product.reviewCount
-        ? product.reviewCount
-        : reviewsToDisplayCount;
+    final int reviewsToDisplayCount = _showAllReviews ? product.reviewCount : _initialReviewCount;
+    final int effectiveReviewsCount = reviewsToDisplayCount > product.reviewCount ? product.reviewCount : reviewsToDisplayCount;
     final bool canShowAll = product.reviewCount > _initialReviewCount;
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface,
-          onPressed: appState.navigateBack,
-        ),
-        // FIX: Used generic product title to avoid truncation overlap issues in the AppBar
-        title: Text(
-          ' ',
-          style: theme.textTheme.titleLarge?.copyWith(
-            color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface, onPressed: appState.navigateBack),
+        title: Text(' ', style: theme.textTheme.titleLarge),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.share_outlined,
-              color: isDarkTheme
-                  ? Colors.white54
-                  : theme.colorScheme.onSurface.withAlpha(153),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Share functionality mocked.')),
-              );
-            },
-          ),
-          // _buildBookmarkButton(context, product, theme.colorScheme.secondary),
+          IconButton(icon: Icon(Icons.share_outlined, color: isDarkTheme ? Colors.white54 : theme.colorScheme.onSurface.withAlpha(153)), onPressed: () {}),
         ],
       ),
       extendBodyBehindAppBar: true,
@@ -141,328 +87,83 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 2. Product Title & Author (Replacing the redundant 'To Calculus' link) ---
-            Text(
-              product.title,
-              style: TextStyle(
-                color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface,
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(product.title, style: TextStyle(color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface, fontSize: 30, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(
-              'by ${product.author}',
-              style: TextStyle(
-                color: isDarkTheme ? Colors.white70 : Colors.grey.shade700,
-                fontSize: 16,
-              ),
-            ),
+            Text('by ${product.author}', style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.grey.shade700, fontSize: 16)),
             const SizedBox(height: 16),
-
-            // --- FIX: Metadata Row (Moved up for better visibility, matching the image structure) ---
             Row(
               children: [
-                Text(
-                  'Type: ${product.type}  |  Category: ${product.category}',
-                  style: TextStyle(
-                    color: isDarkTheme ? Colors.white70 : Colors.black87,
-                    fontSize: 15,
-                  ),
-                ),
+                Text('Type: ${product.type}  |  Category: ${product.category}', style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.black87, fontSize: 15)),
                 const Spacer(),
-                Text(
-                  'Pages: ${product.pages}',
-                  style: TextStyle(
-                    color: isDarkTheme ? Colors.white70 : Colors.black87,
-                    fontSize: 15,
-                  ),
-                ),
+                Text('Pages: ${product.pages}', style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.black87, fontSize: 15)),
               ],
             ),
             const SizedBox(height: 16),
-
-            // 3. Media Area (Full Width)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: mediaWidget,
-            ),
-
+            ClipRRect(borderRadius: BorderRadius.circular(16), child: mediaWidget),
             const SizedBox(height: 24),
-
-            // 4. Main Action Button (Full Width)
-            // --- MODIFICATION START ---
-            // This logic now shows EITHER the "Read" button OR
-            // a Row with "Add to Cart" + "Wishlist"
             isOwned
-                ? SizedBox( // <-- Keep SizedBox wrapper for 'isOwned' case
+                ? SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => appState.navigate(
-                  AppScreen.reading,
-                  id: product.id.toString(),
-                ),
+                onPressed: () => appState.navigate(AppScreen.reading, id: product.id.toString()),
                 icon: const Icon(Icons.menu_book, color: Colors.black),
-                label: const Text(
-                  'Read Document',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: readButtonColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+                label: const Text('Read Document', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(backgroundColor: readButtonColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 16)),
               ),
             )
-                : Row( // <-- This is the new "else" block
+                : Row(
               children: [
-                // Main cart/download button
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () =>
-                        _handleAddToCart(context, appState, product),
-                    icon: Icon(
-                      product.isFree
-                          ? Icons.download
-                          : Icons.shopping_bag,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      product.isFree ? 'Download Now' : 'Add To Cart',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+                    onPressed: () => _handleAddToCart(context, appState, product),
+                    icon: Icon(product.isFree ? Icons.download : Icons.shopping_bag, color: Colors.white),
+                    label: Text(product.isFree ? 'Download Now' : 'Add To Cart', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 16)),
                   ),
                 ),
                 const SizedBox(width: 12),
-
-                // Secondary Wishlist button
-                // We use Consumer here to update the icon state
                 Consumer<AppState>(
                   builder: (context, appState, child) {
-                    final isBookmarked =
-                    appState.bookmarkedProductIds.contains(product.id);
+                    final isBookmarked = appState.bookmarkedProductIds.contains(product.id);
                     return IconButton(
                       onPressed: () {
                         appState.toggleBookmark(product.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isBookmarked
-                                  ? '${product.title} removed from Wishlist.'
-                                  : '${product.title} added to Wishlist.',
-                            ),
-                            duration:
-                            const Duration(milliseconds: 1000),
-                          ),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isBookmarked ? 'Removed from Wishlist' : 'Added to Wishlist'), duration: const Duration(milliseconds: 1000)));
                       },
-                      icon: Icon(
-                        isBookmarked
-                            ? Icons.bookmark_added_rounded
-                            : Icons.bookmark_add_rounded,
-                        color: isBookmarked
-                            ? theme.colorScheme.secondary
-                            : theme.colorScheme.onSurface
-                            .withAlpha(179),
-                      ),
-                      style: IconButton.styleFrom(
-                        side: BorderSide(
-                            color: Colors.grey.shade400, width: 1),
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
+                      icon: Icon(isBookmarked ? Icons.bookmark_added_rounded : Icons.bookmark_add_rounded, color: isBookmarked ? theme.colorScheme.secondary : theme.colorScheme.onSurface.withAlpha(179)),
+                      style: IconButton.styleFrom(side: BorderSide(color: Colors.grey.shade400, width: 1), padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     );
                   },
                 ),
               ],
             ),
-            // --- MODIFICATION END ---
-
-            const SizedBox(
-              height: 18,
-            ), // Retaining a similar space here for better flow after the main button.
-            // 6. Price & Rating
+            const SizedBox(height: 18),
             Row(
               children: [
-                Text(
-                  priceText,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.tertiary,
-                  ),
-                ),
+                Text(priceText, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: theme.colorScheme.tertiary)),
                 const SizedBox(width: 12),
                 const Icon(Icons.star, color: Colors.yellowAccent, size: 22),
                 const SizedBox(width: 4),
-                // Ensure rating text is constrained
-                Flexible(
-                  child: Text(
-                    '${product.rating} (${product.reviewCount} Reviews)',
-                    style: TextStyle(
-                      color: isDarkTheme
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade700,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
+                Flexible(child: Text('${product.rating} (${product.reviewCount} Reviews)', style: TextStyle(color: isDarkTheme ? Colors.grey.shade400 : Colors.grey.shade700, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1)),
               ],
             ),
             const SizedBox(height: 16),
-
-            // 7. Details and Metadata (Long Description)
-            Text(
-              product.details,
-              style: TextStyle(
-                color: isDarkTheme ? Colors.white70 : Colors.black87,
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // REMOVED Redundant Metadata rows: Type, Author, Category, Pages
+            Text(product.details, style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.black87, fontSize: 15)),
             const SizedBox(height: 14),
-
-            // 8. Pill-Shaped Tags (Dynamic content)
             Wrap(
               spacing: 8.0,
-              children: product.tags
-                  .map(
-                    (tag) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tag == 'STEM' || tag == 'Tech'
-                        ? Colors.teal
-                        : Colors.indigo,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    tag,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              )
-                  .toList(),
+              children: product.tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: tag == 'STEM' || tag == 'Tech' ? Colors.teal : Colors.indigo, borderRadius: BorderRadius.circular(30)), child: Text(tag, style: const TextStyle(color: Colors.white)))).toList(),
             ),
-
             const SizedBox(height: 28),
-
-            // 9. Reviews Section
-            Text(
-              'User Reviews (${product.reviewCount})',
-              style: TextStyle(
-                color: theme.colorScheme.secondary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text('User Reviews (${product.reviewCount})', style: TextStyle(color: theme.colorScheme.secondary, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-
-            // Review List
             Column(
-              children: List.generate(
-                effectiveReviewsCount,
-                    (index) => Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor.withAlpha(isDarkTheme ? 128 : 255),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: isDarkTheme
-                        ? null
-                        : [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                  ),
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.account_circle,
-                      color: isDarkTheme
-                          ? Colors.white54
-                          : theme.colorScheme.primary,
-                    ),
-                    title: Text(
-                      index == 0
-                          ? "Alex M."
-                          : index == 1
-                          ? "Sarah K."
-                          : "User ${index + 1}",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    subtitle: Text(
-                      index % 2 == 0
-                          ? 'Great notes! Highly recommend.'
-                          : 'Worth the tokens.',
-                      style: TextStyle(
-                        color: theme.textTheme.bodyMedium?.color?.withAlpha(
-                          179,
-                        ),
-                      ),
-                    ),
-                    trailing: Text(
-                      '${(product.rating - (index * 0.1)).toStringAsFixed(1)} ★',
-                      style: const TextStyle(
-                        color: Colors.amberAccent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              children: List.generate(effectiveReviewsCount, (index) => Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: theme.cardColor.withAlpha(isDarkTheme ? 128 : 255), borderRadius: BorderRadius.circular(12)), child: ListTile(leading: Icon(Icons.account_circle, color: isDarkTheme ? Colors.white54 : theme.colorScheme.primary), title: Text("User ${index + 1}"), subtitle: const Text('Great notes!'), trailing: Text('${(product.rating - 0.1).toStringAsFixed(1)} ★', style: const TextStyle(color: Colors.amberAccent))))),
             ),
-
-            // "View All Reviews" Button (Show only if there are more reviews to see)
             if (canShowAll && !_showAllReviews)
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _showAllReviews = true;
-                  });
-                },
-                child: Text(
-                  'View All Reviews (${product.reviewCount})',
-                  style: TextStyle(color: theme.colorScheme.secondary),
-                ),
-              ),
-
-            // Show "Hide Reviews" if all are shown and the initial count was exceeded
-            if (_showAllReviews && product.reviewCount > _initialReviewCount)
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _showAllReviews = false;
-                  });
-                },
-                child: Text(
-                  'Hide Extra Reviews',
-                  style: TextStyle(color: theme.colorScheme.secondary),
-                ),
-              ),
-
+              TextButton(onPressed: () => setState(() => _showAllReviews = true), child: Text('View All Reviews', style: TextStyle(color: theme.colorScheme.secondary))),
+            if (_showAllReviews)
+              TextButton(onPressed: () => setState(() => _showAllReviews = false), child: Text('Hide Extra Reviews', style: TextStyle(color: theme.colorScheme.secondary))),
             const SizedBox(height: 42),
           ],
         ),

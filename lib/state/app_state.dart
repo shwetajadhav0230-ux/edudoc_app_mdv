@@ -1,14 +1,14 @@
-// lib/state/app_state.dart
-
+import 'dart:convert'; // Required for JSON serialization
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart'; // ADDED: For Native Sharing
-import 'package:url_launcher/url_launcher.dart'; // ADDED: For opening Links
-
-import '../data/mock_data.dart' as mock_data;
+import 'package:shared_preferences/shared_preferences.dart'; // Required for Local Storage
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/data_service.dart';
+// import '../data/mock_data.dart' as mock_data; // REMOVED: Mock data no longer needed
 import '../models/product.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
-// Note: Assuming Offer model is available in the scope of AppState
+import '../models/offer.dart'; // Ensure this is imported
 
 enum AppScreen {
   welcome,
@@ -30,20 +30,32 @@ enum AppScreen {
   userActivity,
   adminDashboard,
   reading,
-  // NEW: Profile Edit Screen
   profileEdit,
-  // --- NEW SETTINGS DESTINATIONS ---
-  emailManagement, // Added for Email Address settings
-  changePassword, // Added for Change Password settings
-  about, // Added for About EduDoc
-  helpSupport, // Added for Help & Support
+  emailManagement,
+  changePassword,
+  about,
+  helpSupport,
 }
 
 class AppState extends ChangeNotifier {
   // --- Global State ---
   AppScreen _currentScreen = AppScreen.welcome;
-  // CHANGED: Replaced single _previousPage with a proper history stack
   final List<AppScreen> _historyStack = [];
+  final DataService _dataService = DataService();
+
+  // --- Data Lists (Fetched from Supabase) ---
+  List<Product> _products = [];
+  List<Offer> _offers = [];
+
+  bool _isLoadingProducts = false;
+  bool _isLoadingOffers = false;
+
+  // --- User/Profile State (Locally Persisted) ---
+  int _walletTokens = 450; // Default value, will be overwritten by local storage
+  List<Transaction> _transactionHistory = [];
+  List<int> _ownedProductIds = [101, 102]; // Default starter items
+  final List<int> _bookmarkedProductIds = [];
+  final List<Product> _cartItems = [];
 
   String _userRole = 'user';
   bool _isDarkTheme = true;
@@ -51,42 +63,30 @@ class AppState extends ChangeNotifier {
   String? _selectedOfferId;
 
   // --- Settings State Variables ---
-  bool _isBiometricEnabled = false; // Initialize to false
-  bool _areNotificationsEnabled = true; // Initialize to true
-  bool _isPromoEmailEnabled = false; // Initialize to false
+  bool _isBiometricEnabled = false;
+  bool _areNotificationsEnabled = true;
+  bool _isPromoEmailEnabled = false;
 
-  // --- NEW: Reader Settings State (For Settings Dialog Functionality) ---
+  // --- Reader Settings State ---
   String _readerPageFlipping = 'Horizontal';
   String _readerColorMode = 'Day';
   double _readerFontSize = 42;
   double _readerLineSpacing = 100;
-  // NEW: Helper property to track if reader settings have changed
   int _readerSettingsVersion = 0;
 
-  // --- Transaction History State ---
-  final List<Transaction> _transactionHistory =
-  mock_data.transactionHistory.toList();
-
-  // --- User/Profile State ---
-  int _walletTokens = 450;
-  final List<Product> _cartItems = [];
-  final List<int> _bookmarkedProductIds = []; // FIX: Initialized as empty
-  final List<int> _ownedProductIds = [101, 102]; // Library/Purchased items
-
-  // FIX: User object used for profile management
+  // --- User Profile Object ---
   User _currentUser = User(
     id: 'user_123',
     fullName: 'Jane Doe',
     email: 'jane.doe@edudoc.com',
     phoneNumber: '555-1234',
     bio: 'Avid student and note taker.',
-    profileImageBase64: null, // Starts null
+    profileImageBase64: null,
   );
 
-  // --- Profile Image Handling State ---
   bool _isImageProcessing = false;
 
-  // --- FIX: Auth/Lock Screen State ---
+  // --- Auth/Lock Screen State ---
   String _pinCode = '';
   final String correctPin = '1234';
   bool _showPasswordUnlock = false;
@@ -96,44 +96,146 @@ class AppState extends ChangeNotifier {
   int _homeCurrentPage = 1;
   final int itemsPerPage = 6;
 
-  // --- Data Accessors ---
+  // --- Getters ---
   AppScreen get currentScreen => _currentScreen;
   String get userRole => _userRole;
   bool get isDarkTheme => _isDarkTheme;
   int get walletTokens => _walletTokens;
+
+  List<Product> get products => _products;
+  List<Offer> get offers => _offers;
+  bool get isLoadingProducts => _isLoadingProducts;
+  bool get isLoadingOffers => _isLoadingOffers;
+
   List<Product> get cartItems => _cartItems;
   List<int> get bookmarkedProductIds => _bookmarkedProductIds;
-  List<int> get ownedProductIds => _ownedProductIds; // Added for Library
+  List<int> get ownedProductIds => _ownedProductIds;
   User get currentUser => _currentUser;
   bool get isImageProcessing => _isImageProcessing;
   String get homeFilter => _homeFilter;
   int get homeCurrentPage => _homeCurrentPage;
-
-  // --- ADDED: GETTER FOR THE TRANSACTION LIST ---
   List<Transaction> get transactionHistory => _transactionHistory;
 
-  // --- Settings Getters ---
+  // Settings Getters
   bool get isBiometricEnabled => _isBiometricEnabled;
   bool get areNotificationsEnabled => _areNotificationsEnabled;
   bool get isPromoEmailEnabled => _isPromoEmailEnabled;
 
-  // --- CRITICAL: Reader Settings Getters (Used to initialize Dialog State) ---
+  // Reader Getters
   String get readerPageFlipping => _readerPageFlipping;
   String get readerColorMode => _readerColorMode;
   double get readerFontSize => _readerFontSize;
   double get readerLineSpacing => _readerLineSpacing;
-  // NEW: Getter for version number
   int get readerSettingsVersion => _readerSettingsVersion;
 
-  // FIX: Auth/Lock Screen Getters
+  // Auth Getters
   String get pinCode => _pinCode;
   bool get showPasswordUnlock => _showPasswordUnlock;
   String? get selectedProductId => _selectedProductId;
   String? get selectedOfferId => _selectedOfferId;
 
-  // --- Navigation & Routing (REFACTORED) ---
+  // --- Constructor & Initialization ---
+  AppState() {
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    // 1. Load Local Data (Wallet, History, Library)
+    await _loadLocalData();
+
+    // 2. Fetch Cloud Data (Products, Offers)
+    fetchProducts();
+    fetchOffers();
+  }
+
+  // --- Data Fetching (Supabase) ---
+
+  Future<void> fetchProducts() async {
+    _isLoadingProducts = true;
+    notifyListeners();
+
+    try {
+      final fetchedProducts = await _dataService.getProducts();
+      if (fetchedProducts.isNotEmpty) {
+        _products = fetchedProducts;
+      }
+    } catch (e) {
+      debugPrint("Error fetching products: $e");
+    } finally {
+      _isLoadingProducts = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchOffers() async {
+    _isLoadingOffers = true;
+    notifyListeners();
+
+    try {
+      // Ensure your DataService has a getOffers() method implemented
+      final fetchedOffers = await _dataService.getOffers();
+      if (fetchedOffers.isNotEmpty) {
+        _offers = fetchedOffers;
+      }
+    } catch (e) {
+      debugPrint("Error fetching offers: $e");
+    } finally {
+      _isLoadingOffers = false;
+      notifyListeners();
+    }
+  }
+
+  // --- Local Storage Logic (Persistence) ---
+
+  Future<void> _loadLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Load Transaction History
+    final String? historyJson = prefs.getString('transaction_history');
+    if (historyJson != null) {
+      try {
+        final List<dynamic> decodedList = json.decode(historyJson);
+        _transactionHistory = decodedList
+            .map((item) => Transaction.fromMap(item))
+            .toList();
+      } catch (e) {
+        debugPrint('Error parsing transaction history: $e');
+      }
+    }
+
+    // 2. Load Owned Products (Library)
+    final List<String>? ownedList = prefs.getStringList('owned_products');
+    if (ownedList != null) {
+      _ownedProductIds = ownedList.map((e) => int.tryParse(e) ?? 0).toList();
+    }
+
+    // 3. Load Wallet Balance
+    _walletTokens = prefs.getInt('wallet_tokens') ?? 450;
+
+    notifyListeners();
+  }
+
+  Future<void> _saveLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Save Transaction History
+    // Ensure Transaction model has toMap() implemented
+    final String historyJson = json.encode(
+      _transactionHistory.map((tx) => tx.toMap()).toList(),
+    );
+    await prefs.setString('transaction_history', historyJson);
+
+    // 2. Save Owned Products
+    final List<String> ownedList =
+    _ownedProductIds.map((id) => id.toString()).toList();
+    await prefs.setStringList('owned_products', ownedList);
+
+    // 3. Save Wallet Balance
+    await prefs.setInt('wallet_tokens', _walletTokens);
+  }
+
+  // --- Navigation & Routing ---
   void navigate(AppScreen screen, {String? id}) {
-    // 1. Define "Root" screens that clear history (Main Tabs)
     final List<AppScreen> rootScreens = [
       AppScreen.home,
       AppScreen.library,
@@ -143,19 +245,13 @@ class AppState extends ChangeNotifier {
       AppScreen.offers,
     ];
 
-    // 2. If we are going to a Root screen, clear history (start fresh)
     if (rootScreens.contains(screen)) {
       _historyStack.clear();
-    }
-    // 3. Otherwise, if it's a detail screen, Save current screen to history
-    else if (_currentScreen != screen && _currentScreen != AppScreen.welcome) {
+    } else if (_currentScreen != screen && _currentScreen != AppScreen.welcome) {
       _historyStack.add(_currentScreen);
     }
 
-    // 4. Perform Navigation
     _currentScreen = screen;
-
-    // Handle IDs
     _selectedProductId = (screen == AppScreen.productDetails || screen == AppScreen.reading) ? id : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
 
@@ -163,33 +259,26 @@ class AppState extends ChangeNotifier {
   }
 
   void navigateBack() {
-    // 1. Safety check: If stack is empty, default to Home
     if (_historyStack.isEmpty) {
       _currentScreen = AppScreen.home;
       notifyListeners();
       return;
     }
 
-    // 2. Pop the last screen from history
     final previousScreen = _historyStack.removeLast();
-
-    // 3. Restore State
     _currentScreen = previousScreen;
-
-    // Optional: Clear selection IDs if going back ensures we don't show stale data
     _selectedProductId = null;
     _selectedOfferId = null;
 
     notifyListeners();
   }
 
-  // --- Image Processing Flag ---
+  // --- Profile & Auth Logic ---
   void setImageProcessing(bool processing) {
     _isImageProcessing = processing;
     notifyListeners();
   }
 
-  // --- Profile Management ---
   void saveProfile({
     required String fullName,
     required String email,
@@ -197,7 +286,6 @@ class AppState extends ChangeNotifier {
     required String bio,
     String? profileImageBase64,
   }) {
-    // Update the local User object state
     _currentUser = _currentUser.copyWith(
       fullName: fullName,
       email: email,
@@ -206,12 +294,9 @@ class AppState extends ChangeNotifier {
       profileImageBase64: profileImageBase64,
     );
     notifyListeners();
-
-    // Navigate back to the main profile page
     navigate(AppScreen.profile);
   }
 
-  // FIX: Auth Lock Logic Methods
   void pinEnter(String digit) {
     if (_pinCode.length < 4) {
       _pinCode += digit;
@@ -246,7 +331,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Theme/Role Logic ---
   void toggleTheme() {
     _isDarkTheme = !_isDarkTheme;
     notifyListeners();
@@ -261,91 +345,78 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Settings Toggles Implementation ---
-
-  /// Toggles the state of biometric login (Fingerprint/Face ID).
+  // --- Settings Toggles ---
   void toggleBiometrics(bool newValue) {
     _isBiometricEnabled = newValue;
     notifyListeners();
   }
 
-  /// Toggles all main application notifications.
   void toggleAppNotifications(bool newValue) {
     _areNotificationsEnabled = newValue;
     notifyListeners();
   }
 
-  /// Toggles promotional email subscription status.
   void togglePromoEmails(bool newValue) {
     _isPromoEmailEnabled = newValue;
     notifyListeners();
   }
 
-  // --- CRITICAL: Reader Settings Mutators (Used by ReaderSettingsDialog) ---
-
-  // Helper to increment version number when any reader setting changes
+  // --- Reader Settings ---
   void _incrementReaderVersion() {
     _readerSettingsVersion++;
   }
 
-  /// Updates the page flipping mode (Horizontal/Vertical).
   void setReaderPageFlipping(String mode) {
     _readerPageFlipping = mode;
-    _incrementReaderVersion(); // Signal change
+    _incrementReaderVersion();
     notifyListeners();
   }
 
-  /// Updates the reading color mode (Day/Night/Sepia).
   void setReaderColorMode(String mode) {
     _readerColorMode = mode;
-    _incrementReaderVersion(); // Signal change
+    _incrementReaderVersion();
     notifyListeners();
   }
 
-  /// Updates the reader font size.
   void setReaderFontSize(double size) {
     _readerFontSize = size;
-    _incrementReaderVersion(); // Signal change
+    _incrementReaderVersion();
     notifyListeners();
   }
 
-  /// Updates the reader line spacing.
   void setReaderLineSpacing(double spacing) {
     _readerLineSpacing = spacing;
-    _incrementReaderVersion(); // Signal change
+    _incrementReaderVersion();
     notifyListeners();
   }
 
-  // --- Cart/Wallet/Bookmark Logic ---
+  // --- Cart, Wallet & Transaction Logic ---
+
   void addToCart(Product product) {
     if (_cartItems.any((item) => item.id == product.id)) return;
     _cartItems.add(product);
     notifyListeners();
   }
 
-  // NEW METHOD: Adds a free product directly to the user's library (owned products)
+  /// Adds a free product directly to the library and persists the transaction
   void addToLibrary(Product product) {
-    // 1. Add product to owned list if it's not already there.
     if (!_ownedProductIds.contains(product.id)) {
       _ownedProductIds.add(product.id);
 
-      // 2. Create a 'Download' transaction record (as it's free)
       final newTx = Transaction(
-        id: DateTime.now().millisecondsSinceEpoch + product.id, // Unique ID
+        id: DateTime.now().millisecondsSinceEpoch + product.id,
         type: 'Download',
-        amount: 0, // Free product
-        date: 'Nov 4, 2025', // Using a mock date
+        amount: 0,
+        date: DateTime.now().toString().split(' ')[0],
         description: 'Downloaded ${product.title}',
       );
 
-      // 3. Add transaction to the list (at the top)
       _transactionHistory.insert(0, newTx);
-
+      _saveLocalData(); // SAVE TO DISK
       notifyListeners();
     }
   }
 
-  // INTEGRATED FIX: Method to add the Annual Pro Pack
   void addProPackToCart() {
     final proPack = Product(
       id: 999,
@@ -370,16 +441,11 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // NEW METHOD: Adds all products in a specific bundle (Offer) to the cart.
-  // CRITICAL: We now store the list of bundled product IDs in the content field
-  // so checkout() can access it.
-  void addBundleToCart(dynamic offer) {
+  void addBundleToCart(Offer offer) {
     if (offer.status != 'Active') return;
 
-    // Remove any mock bundle/pack items first to ensure a clean addition
     _cartItems.removeWhere((item) => item.id == 999 || item.id == offer.id);
 
-    // Create a mock product representing the bundle itself for the cart/summary view
     final bundleProduct = Product(
       id: offer.id,
       type: 'Bundle',
@@ -394,12 +460,11 @@ class AppState extends ChangeNotifier {
       pages: offer.productIds.length,
       reviewCount: 0,
       details: 'Includes ${offer.productIds.length} documents.',
-      // CRITICAL CHANGE: Store productIds list as a string in content field
+      // Store productIds list as a string in content field for checkout parsing
       content: offer.productIds.map((id) => id.toString()).join(','),
       imageUrl: '',
     );
 
-    // Check if the bundle itself is already in the cart
     if (!_cartItems.any((item) => item.id == bundleProduct.id)) {
       _cartItems.add(bundleProduct);
       notifyListeners();
@@ -414,22 +479,19 @@ class AppState extends ChangeNotifier {
   void buyTokens(int amount) {
     _walletTokens += amount;
 
-    // Create a new transaction object
     final newTx = Transaction(
-      id: DateTime.now().millisecondsSinceEpoch, // Unique ID
+      id: DateTime.now().millisecondsSinceEpoch,
       type: 'Credit',
       amount: amount,
-      date: 'Nov 4, 2025', // Using a mock date
+      date: DateTime.now().toString().split(' ')[0],
       description: 'Package purchase',
     );
 
-    // Add it to the list (at the top)
     _transactionHistory.insert(0, newTx);
-
+    _saveLocalData(); // SAVE TO DISK
     notifyListeners();
   }
 
-  // FIX: Checkout now adds all bundled documents to the library.
   void checkout() {
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
     if (totalCost > _walletTokens || _cartItems.isEmpty) return;
@@ -441,21 +503,18 @@ class AppState extends ChangeNotifier {
     final List<int> productsToAddToLibrary = [];
 
     for (var item in _cartItems) {
-      // Case 1: The item is a purchased document (not a subscription/bundle)
+      // Case 1: Single Document
       if (item.type != 'Subscription' && item.type != 'Bundle') {
         productsToAddToLibrary.add(item.id);
       }
 
-      // Case 2: The item is a purchased bundle
-      if (item.type == 'Bundle' &&
-          item.content != null &&
-          item.content!.isNotEmpty) {
-        // Retrieve product IDs from the content field and parse them as integers
+      // Case 2: Bundle (Parse stored IDs from content string)
+      if (item.type == 'Bundle' && item.content.isNotEmpty) {
         try {
-          final List<int> bundledIds = item.content!
+          final List<int> bundledIds = item.content
               .split(',')
               .map((idStr) => int.tryParse(idStr))
-              .whereType<int>() // Filters out any null results
+              .whereType<int>()
               .toList();
           productsToAddToLibrary.addAll(bundledIds);
         } catch (e) {
@@ -465,10 +524,10 @@ class AppState extends ChangeNotifier {
 
       // Record Transaction
       final newTx = Transaction(
-        id: DateTime.now().millisecondsSinceEpoch + item.id, // Unique ID
+        id: DateTime.now().millisecondsSinceEpoch + item.id,
         type: item.isFree ? 'Download' : 'Debit',
         amount: item.price,
-        date: 'Nov 4, 2025',
+        date: DateTime.now().toString().split(' ')[0],
         description: item.isFree
             ? 'Downloaded ${item.title}'
             : 'Purchased ${item.title}',
@@ -476,7 +535,7 @@ class AppState extends ChangeNotifier {
       _transactionHistory.insert(0, newTx);
     }
 
-    // Add unique products to the user's library
+    // Add to owned library
     for (int id in productsToAddToLibrary) {
       if (!_ownedProductIds.contains(id)) {
         _ownedProductIds.add(id);
@@ -484,10 +543,10 @@ class AppState extends ChangeNotifier {
     }
 
     _cartItems.clear();
+    _saveLocalData(); // SAVE TO DISK
     notifyListeners();
   }
 
-  // Original functionality remains for Wishlist
   void toggleBookmark(int id) {
     if (_bookmarkedProductIds.contains(id)) {
       _bookmarkedProductIds.remove(id);
