@@ -2,20 +2,56 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../state/app_state.dart'; // Uses your AppState
+import '../../state/app_state.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin(AppState appState) async {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    await appState.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+      context,
+    );
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // --- MODIFIED: Uses AppState navigation ---
     final appState = Provider.of<AppState>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
-        // --- MODIFIED: Uses AppState navigation ---
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => appState.navigateBack(),
@@ -39,11 +75,12 @@ class LoginScreen extends StatelessWidget {
             Text(
               'Sign in to continue your learning journey.',
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: const Color(0xFF009688),
               ),
             ),
             const SizedBox(height: 32),
             TextFormField(
+              controller: _emailController,
               decoration: InputDecoration(
                 labelText: 'Email',
                 prefixIcon: const Icon(Icons.email_outlined),
@@ -55,30 +92,34 @@ class LoginScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             TextFormField(
+              controller: _passwordController,
               decoration: InputDecoration(
                 labelText: 'Password',
                 prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: const Icon(Icons.visibility_off_outlined),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              obscureText: true,
+              obscureText: _obscurePassword,
             ),
+
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Feature coming soon!")));
+                },
                 child: const Text('Forgot Password?'),
               ),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                // --- MODIFIED: Uses AppState navigation to log in ---
-                appState.navigate(AppScreen.home);
-              },
+              onPressed: _isLoading ? null : () => _handleLogin(appState),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
                 foregroundColor: theme.colorScheme.onPrimary,
@@ -89,31 +130,21 @@ class LoginScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Sign In'),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                    child: Divider(thickness: 1, color: theme.dividerColor)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('OR'),
-                ),
-                Expanded(
-                    child: Divider(thickness: 1, color: theme.dividerColor)),
-              ],
+              child: _isLoading
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Sign In'),
             ),
             const SizedBox(height: 32),
             OutlinedButton.icon(
               onPressed: () {
-                // --- MODIFIED: Uses AppState navigation to log in ---
-                appState.navigate(AppScreen.home);
+                // ✅ CALL THE NEW METHOD
+                appState.loginWithGoogle(context);
               },
               icon: Image.asset(
-                'lib/assets/images/google_icon.png', // Uses the new asset
+                'lib/assets/images/google_icon.png',
                 height: 24,
                 width: 24,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata),
               ),
               label: const Text('Sign in with Google'),
               style: OutlinedButton.styleFrom(
@@ -134,7 +165,6 @@ class LoginScreen extends StatelessWidget {
                 const Text("Don't have an account?"),
                 TextButton(
                   onPressed: () {
-                    // --- MODIFIED: Uses AppState navigation ---
                     appState.navigate(AppScreen.signup);
                   },
                   child: const Text('Sign Up'),

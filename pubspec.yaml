@@ -41,6 +41,7 @@ dependencies:
     # 4. Networking & Caching
   cached_network_image: ^3.3.0     # For efficient image loading
   connectivity_plus: ^5.0.2
+  google_sign_in: ^6.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

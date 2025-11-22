@@ -6,6 +6,7 @@ import 'state/app_state.dart';
 import 'widgets/common_widgets.dart'; // Assuming MainScreenRouter is in here
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utils/config.dart';
+
 void main() async {
   // 4. Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();

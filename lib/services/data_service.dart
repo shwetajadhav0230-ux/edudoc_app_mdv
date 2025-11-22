@@ -25,14 +25,19 @@ class DataService {
   /// ✅ ADDED: Fetches all offers from the Supabase 'offers' table
   Future<List<Offer>> getOffers() async {
     try {
+      print("🔍 ATTEMPTING TO FETCH OFFERS..."); // Debug print
+
       final List<dynamic> response = await _supabase
           .from('offers')
           .select()
           .order('id', ascending: true);
 
+      print("✅ SUPABASE SUCCESS: Found ${response.length} offers"); // Check count
+      print("DATA: $response"); // Check exact data structure
+
       return response.map((json) => Offer.fromMap(json)).toList();
     } catch (e) {
-      debugPrint('Error fetching offers from Supabase: $e');
+      print('❌ SUPABASE ERROR: $e'); // See the real error
       return [];
     }
   }

@@ -1,19 +1,22 @@
-import 'dart:convert'; // Required for JSON serialization
+// lib/state/app_state.dart
+
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Required for Local Storage
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../services/data_service.dart';
-// import '../data/mock_data.dart' as mock_data; // REMOVED: Mock data no longer needed
+import '../services/auth_service.dart';
 import '../models/product.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
-import '../models/offer.dart'; // Ensure this is imported
+import '../models/offer.dart';
 
 enum AppScreen {
   welcome,
   login,
   signup,
+  verifyEmail, // Screen for entering OTP
   permissions,
   lockUnlock,
   home,
@@ -38,22 +41,28 @@ enum AppScreen {
 }
 
 class AppState extends ChangeNotifier {
+  // --- Services ---
+  final DataService _dataService = DataService();
+  final AuthService _authService = AuthService();
+
   // --- Global State ---
   AppScreen _currentScreen = AppScreen.welcome;
   final List<AppScreen> _historyStack = [];
-  final DataService _dataService = DataService();
 
-  // --- Data Lists (Fetched from Supabase) ---
+  // Subscription for Auth State Changes (Google Login)
+  late final StreamSubscription<supabase.AuthState> _authSubscription;
+
+  // --- Data Lists ---
   List<Product> _products = [];
   List<Offer> _offers = [];
 
   bool _isLoadingProducts = false;
   bool _isLoadingOffers = false;
 
-  // --- User/Profile State (Locally Persisted) ---
-  int _walletTokens = 450; // Default value, will be overwritten by local storage
+  // --- User/Profile State ---
+  int _walletTokens = 450;
   List<Transaction> _transactionHistory = [];
-  List<int> _ownedProductIds = [101, 102]; // Default starter items
+  List<int> _ownedProductIds = [101, 102];
   final List<int> _bookmarkedProductIds = [];
   final List<Product> _cartItems = [];
 
@@ -62,12 +71,12 @@ class AppState extends ChangeNotifier {
   String? _selectedProductId;
   String? _selectedOfferId;
 
-  // --- Settings State Variables ---
+  // --- Settings State ---
   bool _isBiometricEnabled = false;
   bool _areNotificationsEnabled = true;
   bool _isPromoEmailEnabled = false;
 
-  // --- Reader Settings State ---
+  // --- Reader Settings ---
   String _readerPageFlipping = 'Horizontal';
   String _readerColorMode = 'Day';
   double _readerFontSize = 42;
@@ -76,11 +85,11 @@ class AppState extends ChangeNotifier {
 
   // --- User Profile Object ---
   User _currentUser = User(
-    id: 'user_123',
-    fullName: 'Jane Doe',
-    email: 'jane.doe@edudoc.com',
-    phoneNumber: '555-1234',
-    bio: 'Avid student and note taker.',
+    id: '',
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    bio: '',
     profileImageBase64: null,
   );
 
@@ -90,8 +99,9 @@ class AppState extends ChangeNotifier {
   String _pinCode = '';
   final String correctPin = '1234';
   bool _showPasswordUnlock = false;
+  String? _pendingEmail; // Stores email during signup for verification
 
-  // --- Home/Search State ---
+  // --- Home/Pagination State ---
   String _homeFilter = 'All';
   int _homeCurrentPage = 1;
   final int itemsPerPage = 6;
@@ -116,19 +126,16 @@ class AppState extends ChangeNotifier {
   int get homeCurrentPage => _homeCurrentPage;
   List<Transaction> get transactionHistory => _transactionHistory;
 
-  // Settings Getters
   bool get isBiometricEnabled => _isBiometricEnabled;
   bool get areNotificationsEnabled => _areNotificationsEnabled;
   bool get isPromoEmailEnabled => _isPromoEmailEnabled;
 
-  // Reader Getters
   String get readerPageFlipping => _readerPageFlipping;
   String get readerColorMode => _readerColorMode;
   double get readerFontSize => _readerFontSize;
   double get readerLineSpacing => _readerLineSpacing;
   int get readerSettingsVersion => _readerSettingsVersion;
 
-  // Auth Getters
   String get pinCode => _pinCode;
   bool get showPasswordUnlock => _showPasswordUnlock;
   String? get selectedProductId => _selectedProductId;
@@ -139,21 +146,176 @@ class AppState extends ChangeNotifier {
     _initApp();
   }
 
-  Future<void> _initApp() async {
-    // 1. Load Local Data (Wallet, History, Library)
-    await _loadLocalData();
-
-    // 2. Fetch Cloud Data (Products, Offers)
-    fetchProducts();
-    fetchOffers();
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 
-  // --- Data Fetching (Supabase) ---
+  Future<void> _initApp() async {
+    // 1. Set up Auth Listener (Handles Google Login Redirect)
+    _authSubscription = supabase.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
+      final event = data.event;
+
+      if (event == supabase.AuthChangeEvent.signedIn && session != null) {
+        // User just signed in (e.g. via Google deep link)
+        _handleAutoLogin();
+      } else if (event == supabase.AuthChangeEvent.signedOut) {
+        _currentScreen = AppScreen.welcome;
+        notifyListeners();
+      }
+    });
+
+    // 2. Check Initial Session
+    final session = supabase.Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      await _handleAutoLogin();
+    } else {
+      _currentScreen = AppScreen.welcome;
+    }
+
+    // 3. Load Data
+    await _loadLocalData();
+    fetchProducts();
+    fetchOffers();
+
+    notifyListeners();
+  }
+
+  // Helper to fetch profile and redirect
+  Future<void> _handleAutoLogin() async {
+    final userProfile = await _authService.fetchUserProfile();
+    if (userProfile != null) {
+      _currentUser = userProfile;
+    }
+
+    // Only redirect if we are currently on an auth screen
+    // This prevents random redirects if the user is already browsing
+    if (_currentScreen == AppScreen.welcome ||
+        _currentScreen == AppScreen.login ||
+        _currentScreen == AppScreen.signup ||
+        _currentScreen == AppScreen.verifyEmail) {
+      navigate(AppScreen.home);
+    }
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------
+  // ✅ AUTH METHODS (Login, Signup, Verify, Google)
+  // -------------------------------------------------------
+
+  Future<void> login(String email, String password, BuildContext context) async {
+    try {
+      await _authService.signIn(email, password);
+      await _handleAutoLogin(); // Fetch profile & redirect
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login Failed: ${e.toString().replaceAll('AuthException:', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> loginWithGoogle(BuildContext context) async {
+    try {
+      // Opens browser. When done, it redirects back to app,
+      // triggering the onAuthStateChange listener in _initApp.
+      await _authService.signInWithGoogle();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign-In Failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> signup(String email, String password, String fullName, BuildContext context) async {
+    try {
+      await _authService.signUp(email, password, fullName);
+
+      final session = supabase.Supabase.instance.client.auth.currentSession;
+
+      if (session != null) {
+        // Auto-login successful (Email confirmation disabled)
+        await _handleAutoLogin();
+      } else {
+        // Email confirmation required
+        _pendingEmail = email;
+        navigate(AppScreen.verifyEmail);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Code sent! Please check your email.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Signup Failed: ${e.toString().replaceAll('AuthException:', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> verifyOtp(String token, BuildContext context) async {
+    if (_pendingEmail == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No email found. Please sign up again.')),
+      );
+      return;
+    }
+
+    try {
+      await _authService.verifyEmailOtp(_pendingEmail!, token);
+      await _handleAutoLogin(); // Fetch profile & redirect
+      _pendingEmail = null;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email verified! Welcome.')),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Verification Failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> logout() async {
+    await _authService.signOut();
+
+    // Reset User State
+    _currentUser = User(id: '', fullName: '', email: '', phoneNumber: '', bio: '', profileImageBase64: null);
+    _walletTokens = 0;
+    _ownedProductIds = [];
+    _cartItems.clear();
+
+    _historyStack.clear();
+    _currentScreen = AppScreen.login;
+
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------
+  // DATA & UI LOGIC
+  // -------------------------------------------------------
 
   Future<void> fetchProducts() async {
     _isLoadingProducts = true;
     notifyListeners();
-
     try {
       final fetchedProducts = await _dataService.getProducts();
       if (fetchedProducts.isNotEmpty) {
@@ -170,9 +332,7 @@ class AppState extends ChangeNotifier {
   Future<void> fetchOffers() async {
     _isLoadingOffers = true;
     notifyListeners();
-
     try {
-      // Ensure your DataService has a getOffers() method implemented
       final fetchedOffers = await _dataService.getOffers();
       if (fetchedOffers.isNotEmpty) {
         _offers = fetchedOffers;
@@ -185,56 +345,42 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // --- Local Storage Logic (Persistence) ---
+  // --- Local Storage Logic ---
 
   Future<void> _loadLocalData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Load Transaction History
     final String? historyJson = prefs.getString('transaction_history');
     if (historyJson != null) {
       try {
         final List<dynamic> decodedList = json.decode(historyJson);
-        _transactionHistory = decodedList
-            .map((item) => Transaction.fromMap(item))
-            .toList();
+        _transactionHistory = decodedList.map((item) => Transaction.fromMap(item)).toList();
       } catch (e) {
         debugPrint('Error parsing transaction history: $e');
       }
     }
 
-    // 2. Load Owned Products (Library)
     final List<String>? ownedList = prefs.getStringList('owned_products');
     if (ownedList != null) {
       _ownedProductIds = ownedList.map((e) => int.tryParse(e) ?? 0).toList();
     }
 
-    // 3. Load Wallet Balance
     _walletTokens = prefs.getInt('wallet_tokens') ?? 450;
-
     notifyListeners();
   }
 
   Future<void> _saveLocalData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // 1. Save Transaction History
-    // Ensure Transaction model has toMap() implemented
-    final String historyJson = json.encode(
-      _transactionHistory.map((tx) => tx.toMap()).toList(),
-    );
+    final String historyJson = json.encode(_transactionHistory.map((tx) => tx.toMap()).toList());
     await prefs.setString('transaction_history', historyJson);
 
-    // 2. Save Owned Products
-    final List<String> ownedList =
-    _ownedProductIds.map((id) => id.toString()).toList();
+    final List<String> ownedList = _ownedProductIds.map((id) => id.toString()).toList();
     await prefs.setStringList('owned_products', ownedList);
 
-    // 3. Save Wallet Balance
     await prefs.setInt('wallet_tokens', _walletTokens);
   }
 
-  // --- Navigation & Routing ---
+  // --- Navigation ---
   void navigate(AppScreen screen, {String? id}) {
     final List<AppScreen> rootScreens = [
       AppScreen.home,
@@ -264,16 +410,14 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
-
     final previousScreen = _historyStack.removeLast();
     _currentScreen = previousScreen;
     _selectedProductId = null;
     _selectedOfferId = null;
-
     notifyListeners();
   }
 
-  // --- Profile & Auth Logic ---
+  // --- Profile Logic ---
   void setImageProcessing(bool processing) {
     _isImageProcessing = processing;
     notifyListeners();
@@ -297,6 +441,7 @@ class AppState extends ChangeNotifier {
     navigate(AppScreen.profile);
   }
 
+  // --- PIN Logic ---
   void pinEnter(String digit) {
     if (_pinCode.length < 4) {
       _pinCode += digit;
@@ -331,6 +476,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Toggles ---
   void toggleTheme() {
     _isDarkTheme = !_isDarkTheme;
     notifyListeners();
@@ -338,14 +484,12 @@ class AppState extends ChangeNotifier {
 
   void toggleUserRole() {
     _userRole = _userRole == 'Admin' ? 'User' : 'Admin';
-    if (_currentScreen == AppScreen.adminDashboard ||
-        _currentScreen == AppScreen.userActivity) {
+    if (_currentScreen == AppScreen.adminDashboard || _currentScreen == AppScreen.userActivity) {
       navigate(AppScreen.home);
     }
     notifyListeners();
   }
 
-  // --- Settings Toggles ---
   void toggleBiometrics(bool newValue) {
     _isBiometricEnabled = newValue;
     notifyListeners();
@@ -390,19 +534,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Cart, Wallet & Transaction Logic ---
-
+  // --- Cart & Wallet Logic ---
   void addToCart(Product product) {
     if (_cartItems.any((item) => item.id == product.id)) return;
     _cartItems.add(product);
     notifyListeners();
   }
 
-  /// Adds a free product directly to the library and persists the transaction
   void addToLibrary(Product product) {
     if (!_ownedProductIds.contains(product.id)) {
       _ownedProductIds.add(product.id);
-
       final newTx = Transaction(
         id: DateTime.now().millisecondsSinceEpoch + product.id,
         type: 'Download',
@@ -410,31 +551,14 @@ class AppState extends ChangeNotifier {
         date: DateTime.now().toString().split(' ')[0],
         description: 'Downloaded ${product.title}',
       );
-
       _transactionHistory.insert(0, newTx);
-      _saveLocalData(); // SAVE TO DISK
+      _saveLocalData();
       notifyListeners();
     }
   }
 
   void addProPackToCart() {
-    final proPack = Product(
-      id: 999,
-      type: 'Subscription',
-      title: 'Annual Pro Pack',
-      description: 'Unlimited access for one year.',
-      price: 300,
-      isFree: false,
-      category: 'Premium',
-      tags: ['Unlimited'],
-      rating: 5.0,
-      author: 'EduDoc',
-      pages: 0,
-      reviewCount: 0,
-      details: 'The ultimate subscription for full library access.',
-      content: 'N/A',
-      imageUrl: '',
-    );
+    final proPack = Product(id: 999, type: 'Subscription', title: 'Annual Pro Pack', description: 'Unlimited access.', price: 300, isFree: false, category: 'Premium', tags: ['Unlimited'], rating: 5.0, author: 'EduDoc', pages: 0, reviewCount: 0, details: 'Full Access', content: 'N/A', imageUrl: '');
     if (!_cartItems.any((item) => item.id == proPack.id)) {
       _cartItems.add(proPack);
       notifyListeners();
@@ -443,28 +567,8 @@ class AppState extends ChangeNotifier {
 
   void addBundleToCart(Offer offer) {
     if (offer.status != 'Active') return;
-
     _cartItems.removeWhere((item) => item.id == 999 || item.id == offer.id);
-
-    final bundleProduct = Product(
-      id: offer.id,
-      type: 'Bundle',
-      title: offer.title,
-      description: 'Bundle discount: ${offer.discount}',
-      price: offer.tokenPrice,
-      isFree: offer.tokenPrice == 0,
-      category: 'Bundle',
-      tags: [],
-      rating: 0.0,
-      author: 'System',
-      pages: offer.productIds.length,
-      reviewCount: 0,
-      details: 'Includes ${offer.productIds.length} documents.',
-      // Store productIds list as a string in content field for checkout parsing
-      content: offer.productIds.map((id) => id.toString()).join(','),
-      imageUrl: '',
-    );
-
+    final bundleProduct = Product(id: offer.id, type: 'Bundle', title: offer.title, description: 'Discount: ${offer.discount}', price: offer.tokenPrice, isFree: offer.tokenPrice == 0, category: 'Bundle', tags: [], rating: 0.0, author: 'System', pages: offer.productIds.length, reviewCount: 0, details: 'Includes ${offer.productIds.length} docs.', content: offer.productIds.map((id) => id.toString()).join(','), imageUrl: '');
     if (!_cartItems.any((item) => item.id == bundleProduct.id)) {
       _cartItems.add(bundleProduct);
       notifyListeners();
@@ -478,17 +582,9 @@ class AppState extends ChangeNotifier {
 
   void buyTokens(int amount) {
     _walletTokens += amount;
-
-    final newTx = Transaction(
-      id: DateTime.now().millisecondsSinceEpoch,
-      type: 'Credit',
-      amount: amount,
-      date: DateTime.now().toString().split(' ')[0],
-      description: 'Package purchase',
-    );
-
+    final newTx = Transaction(id: DateTime.now().millisecondsSinceEpoch, type: 'Credit', amount: amount, date: DateTime.now().toString().split(' ')[0], description: 'Package purchase');
     _transactionHistory.insert(0, newTx);
-    _saveLocalData(); // SAVE TO DISK
+    _saveLocalData();
     notifyListeners();
   }
 
@@ -496,54 +592,29 @@ class AppState extends ChangeNotifier {
     final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
     if (totalCost > _walletTokens || _cartItems.isEmpty) return;
 
-    if (totalCost > 0) {
-      _walletTokens -= totalCost;
-    }
+    if (totalCost > 0) _walletTokens -= totalCost;
 
     final List<int> productsToAddToLibrary = [];
-
     for (var item in _cartItems) {
-      // Case 1: Single Document
       if (item.type != 'Subscription' && item.type != 'Bundle') {
         productsToAddToLibrary.add(item.id);
       }
-
-      // Case 2: Bundle (Parse stored IDs from content string)
       if (item.type == 'Bundle' && item.content.isNotEmpty) {
         try {
-          final List<int> bundledIds = item.content
-              .split(',')
-              .map((idStr) => int.tryParse(idStr))
-              .whereType<int>()
-              .toList();
+          final List<int> bundledIds = item.content.split(',').map((idStr) => int.tryParse(idStr)).whereType<int>().toList();
           productsToAddToLibrary.addAll(bundledIds);
         } catch (e) {
           debugPrint('Error parsing bundle IDs: $e');
         }
       }
-
-      // Record Transaction
-      final newTx = Transaction(
-        id: DateTime.now().millisecondsSinceEpoch + item.id,
-        type: item.isFree ? 'Download' : 'Debit',
-        amount: item.price,
-        date: DateTime.now().toString().split(' ')[0],
-        description: item.isFree
-            ? 'Downloaded ${item.title}'
-            : 'Purchased ${item.title}',
-      );
+      final newTx = Transaction(id: DateTime.now().millisecondsSinceEpoch + item.id, type: item.isFree ? 'Download' : 'Debit', amount: item.price, date: DateTime.now().toString().split(' ')[0], description: item.isFree ? 'Downloaded ${item.title}' : 'Purchased ${item.title}');
       _transactionHistory.insert(0, newTx);
     }
-
-    // Add to owned library
     for (int id in productsToAddToLibrary) {
-      if (!_ownedProductIds.contains(id)) {
-        _ownedProductIds.add(id);
-      }
+      if (!_ownedProductIds.contains(id)) _ownedProductIds.add(id);
     }
-
     _cartItems.clear();
-    _saveLocalData(); // SAVE TO DISK
+    _saveLocalData();
     notifyListeners();
   }
 
@@ -556,7 +627,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Home/Pagination Logic ---
   void applyHomeFilter(String filter) {
     _homeFilter = filter;
     _homeCurrentPage = 1;

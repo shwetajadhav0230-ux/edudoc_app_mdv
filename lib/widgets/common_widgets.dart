@@ -1,5 +1,5 @@
 // lib/widgets/common_widgets.dart
-
+import '../screens/auth/verify_email_screen.dart'; // <--- Add this
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -271,6 +271,8 @@ class MainScreenRouter extends StatelessWidget {
         return const CartScreen();
       case AppScreen.wallet:
         return const WalletScreen();
+      case AppScreen.verifyEmail:
+        return const VerifyEmailScreen();
       case AppScreen.profile:
         return const ProfileScreen();
       case AppScreen.settings:

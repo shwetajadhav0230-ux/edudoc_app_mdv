@@ -1,9 +1,11 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
+// lib/services/auth_service.dart
+
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/services.dart';
+import '../models/user.dart' as app_models;
 
 class AuthService {
   // Singleton Pattern
@@ -11,18 +13,109 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
+  final SupabaseClient _supabase = Supabase.instance.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
 
-  // --- 1. Secure Storage (Tokens & PINs) ---
+  // --- 1. Supabase Authentication ---
 
-  Future<void> saveAuthToken(String token) async {
-    await _secureStorage.write(key: 'auth_token', value: token);
+  User? get currentSupabaseUser => _supabase.auth.currentUser;
+
+  /// Sign Up
+  Future<AuthResponse> signUp(String email, String password, String fullName) async {
+    try {
+      // Pass full_name in metadata so the Trigger can pick it up
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {'full_name': fullName},
+      );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  Future<String?> getAuthToken() async {
-    return await _secureStorage.read(key: 'auth_token');
+  // Google Signin
+  Future<bool> signInWithGoogle() async {
+    try {
+      // REPLACE 'io.supabase.edudoc' with your actual app package name if different
+      return await _supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.edudoc://login-callback',
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
+  /// Sign In
+  Future<AuthResponse> signIn(String email, String password) async {
+    try {
+      return await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// ✅ ADD THIS METHOD (Fixes the error)
+  Future<AuthResponse> verifyEmailOtp(String email, String token) async {
+    try {
+      return await _supabase.auth.verifyOTP(
+        token: token,
+        type: OtpType.signup,
+        email: email,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Sign Out
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
+
+  /// Fetch User Profile
+  Future<app_models.User?> fetchUserProfile() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      final data = await _supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (data != null) {
+        return app_models.User(
+          id: user.id,
+          email: user.email ?? '',
+          fullName: data['full_name'] ?? '',
+          phoneNumber: data['phone_number'] ?? '',
+          bio: data['bio'] ?? '',
+          profileImageBase64: null,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching user profile: $e');
+    }
+
+    // Fallback if DB fetch fails
+    return app_models.User(
+      id: user.id,
+      email: user.email ?? '',
+      fullName: user.userMetadata?['full_name'] ?? 'User',
+      phoneNumber: '',
+      bio: '',
+      profileImageBase64: null,
+    );
+  }
+
+  // --- 2. Secure Storage (PINs) ---
 
   Future<void> saveUserPin(String pin) async {
     await _secureStorage.write(key: 'user_pin', value: pin);
@@ -30,18 +123,16 @@ class AuthService {
 
   Future<bool> verifyPin(String inputPin) async {
     String? storedPin = await _secureStorage.read(key: 'user_pin');
-    // Fallback to default '1234' if no PIN is set yet
     return storedPin != null ? storedPin == inputPin : inputPin == '1234';
   }
 
-  // --- 2. Biometric Authentication ---
+  // --- 3. Biometrics ---
 
   Future<bool> get isBiometricsAvailable async {
     try {
-      final bool canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
-      final bool canAuthenticate =
-          canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
-      return canAuthenticate;
+      final bool canCheck = await _localAuth.canCheckBiometrics;
+      final bool isSupported = await _localAuth.isDeviceSupported();
+      return canCheck || isSupported;
     } on PlatformException catch (_) {
       return false;
     }
@@ -62,48 +153,5 @@ class AuthService {
     } on PlatformException catch (_) {
       return false;
     }
-  }
-
-  // --- 3. Session Persistence (User Data) ---
-
-  Future<void> saveUserSession(User user) async {
-    final prefs = await SharedPreferences.getInstance();
-    // Serialize User object to JSON string
-    // Note: Ensure your User model has toJson()
-    String userJson = jsonEncode({
-      'id': user.id,
-      'fullName': user.fullName,
-      'email': user.email,
-      'phoneNumber': user.phoneNumber,
-      'bio': user.bio,
-      // Add other fields as needed
-    });
-    await prefs.setString('user_session', userJson);
-    await prefs.setBool('is_logged_in', true);
-  }
-
-  Future<User?> loadUserSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool('is_logged_in') ?? false) {
-      String? userStr = prefs.getString('user_session');
-      if (userStr != null) {
-        Map<String, dynamic> userMap = jsonDecode(userStr);
-        return User(
-          id: userMap['id'],
-          fullName: userMap['fullName'],
-          email: userMap['email'],
-          phoneNumber: userMap['phoneNumber'],
-          bio: userMap['bio'],
-          profileImageBase64: null, // Images usually re-fetched or cached separately
-        );
-      }
-    }
-    return null;
-  }
-
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clears SharedPreferences (Theme, User Data)
-    await _secureStorage.deleteAll(); // Clears Secure Tokens
   }
 }

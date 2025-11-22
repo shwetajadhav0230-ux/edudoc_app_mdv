@@ -29,7 +29,15 @@ class ProductCard extends StatelessWidget {
     final theme = Theme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
 
-    final isLightMode = theme.brightness == Brightness.light;
+    // 1. Define the Gradient (Always applied)
+    const gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFF4C4268), // Lighter/Vibrant Purple (Top Left)
+        Color(0xFF282436), // Darker Base Color (Bottom Right)
+      ],
+    );
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -38,32 +46,36 @@ class ProductCard extends StatelessWidget {
       color: const Color(0xFF282436),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isLightMode
-            ? BorderSide(color: Colors.grey.shade300, width: 1)
-            : BorderSide.none,
+        side: BorderSide.none,
       ),
-      child: InkWell(
-        onTap: onTap ??
-                () => appState.navigate(
-              AppScreen.productDetails,
-              id: product.id.toString(),
-            ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return _buildResponsiveVerticalLayout(
-              theme,
-              context,
-              _contentPadding,
-              constraints,
-            );
-          },
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: InkWell(
+          onTap: onTap ??
+                  () => appState.navigate(
+                AppScreen.productDetails,
+                id: product.id.toString(),
+              ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return _buildResponsiveVerticalLayout(
+                theme,
+                context,
+                _contentPadding,
+                constraints,
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
   // ------------------------------------------------------------------
-  // 🔄 RESPONSIVE VERTICAL LAYOUT
+  // RESPONSIVE VERTICAL LAYOUT
   // ------------------------------------------------------------------
 
   Widget _buildResponsiveVerticalLayout(
@@ -76,17 +88,14 @@ class ProductCard extends StatelessWidget {
     final bool hasBoundedHeight = constraints.hasBoundedHeight;
     final double height = constraints.maxHeight;
 
-    // Dynamic cover height
     final double coverHeight = hasBoundedHeight && height.isFinite && height > 0
         ? height * 0.4
         : width * 0.6;
 
-    // Decide how "tight" the card is vertically
     final bool isShortTile = hasBoundedHeight && height < 200;
     final int descMaxLines = isShortTile ? 1 : 2;
 
     if (!hasBoundedHeight) {
-      // Case 1: Unbounded height
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -113,7 +122,6 @@ class ProductCard extends StatelessWidget {
       );
     }
 
-    // Case 2: Bounded height (Grid tiles)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -136,7 +144,6 @@ class ProductCard extends StatelessWidget {
                     child: _buildDescription(theme, maxLines: descMaxLines),
                   ),
                 ),
-
                 const SizedBox(height: 8),
                 const Spacer(),
                 _buildBottomActionRow(theme, context),
@@ -232,7 +239,6 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // 🔤 TITLE WITH AUTOSIZE
   Widget _buildTitle(ThemeData theme) {
     return AutoSizeText(
       product.title,
@@ -243,14 +249,13 @@ class ProductCard extends StatelessWidget {
       style: theme.textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.bold,
         fontSize: 18,
-        color: theme.colorScheme.primary,
+        color: Colors.white,
       ),
     );
   }
 
   Widget _buildTypeChip(ThemeData theme) {
     final displayType = _typeLabelMap[product.type] ?? product.type;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
       decoration: BoxDecoration(
@@ -318,7 +323,6 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // 🔤 DESCRIPTION WITH AUTOSIZE
   Widget _buildDescription(ThemeData theme, {int maxLines = 2}) {
     return AutoSizeText(
       'An in-depth visual guide to the key events and\nbattles of the Second World War.',
@@ -332,15 +336,10 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------------
-  // 🔻 BOTTOM ACTION BAR
-  // ------------------------------------------------------------------
-
   Widget _buildBottomActionRow(ThemeData theme, BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        // Expanded so price text has bounded width -> AutoSizeText can scale
         Expanded(
           child: Align(
             alignment: Alignment.centerLeft,
@@ -350,6 +349,7 @@ class ProductCard extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // UPDATED: Now uses Consumer to update state
             _buildCartButton(theme, context),
             const SizedBox(width: 10),
             _buildBuyButton(theme, context),
@@ -359,7 +359,6 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // 🔤 PRICE / FREE WITH AUTOSIZE & NO BACKGROUND CONTAINER
   Widget _buildPriceInfo(ThemeData theme) {
     if (product.isFree) {
       return AutoSizeText(
@@ -400,33 +399,55 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // UPDATED CART BUTTON WITH STATE HANDLING
   Widget _buildCartButton(ThemeData theme, BuildContext context) {
-    final appState = Provider.of<AppState>(context, listen: false);
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        // Check if item is in cart.
+        // NOTE: If 'cartItems' is not the exact variable name in your AppState,
+        // please update it (e.g., to 'itemsInCart' or 'cartProductIds').
+        // I am assuming cartItems contains Product objects or objects with an 'id'.
+        final isInCart = appState.cartItems.any((item) => item.id == product.id);
 
-    return Container(
-      width: 35,
-      height: 35,
-      decoration: BoxDecoration(
-        color: const Color(0xFF4C4268),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          appState.addToCart(product);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${product.title} added to cart!'),
-              duration: const Duration(milliseconds: 1500),
+        return Container(
+          width: 35,
+          height: 35,
+          decoration: BoxDecoration(
+            // Change color to Green/Secondary if in cart
+            color: isInCart ? Colors.green : const Color(0xFF4C4268),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              if (isInCart) {
+                // If already in cart, just show a message (or you could remove it)
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${product.title} is already in your cart!'),
+                    duration: const Duration(milliseconds: 1000),
+                  ),
+                );
+              } else {
+                // Add to cart
+                appState.addToCart(product);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${product.title} added to cart!'),
+                    duration: const Duration(milliseconds: 1500),
+                  ),
+                );
+              }
+            },
+            child: Icon(
+              // Change icon to Check if in cart
+              isInCart ? Icons.check : Icons.shopping_cart_outlined,
+              color: Colors.white.withOpacity(0.9),
+              size: 20,
             ),
-          );
-        },
-        child: Icon(
-          Icons.shopping_cart_outlined,
-          color: Colors.white.withOpacity(0.8),
-          size: 20,
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
