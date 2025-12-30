@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import '../../data/mock_data.dart'; // REMOVED
+import 'package:share_plus/share_plus.dart';
 import '../../models/product.dart';
+import '../../models/review.dart';
 import '../../state/app_state.dart';
+import '../../services/data_service.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({super.key});
@@ -14,6 +16,31 @@ class ProductDetailsScreen extends StatefulWidget {
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   bool _showAllReviews = false;
   final int _initialReviewCount = 2;
+  List<Review> _realReviews = [];
+  bool _isLoadingReviews = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchReviews();
+    });
+  }
+
+  Future<void> _fetchReviews() async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final productId = int.tryParse(appState.selectedProductId ?? '') ?? 0;
+
+    if (productId != 0) {
+      final reviews = await DataService().getProductReviews(productId);
+      if (mounted) {
+        setState(() {
+          _realReviews = reviews;
+          _isLoadingReviews = false;
+        });
+      }
+    }
+  }
 
   void _handleAddToCart(BuildContext context, AppState appState, Product product) {
     appState.addToCart(product);
@@ -23,6 +50,102 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     ));
   }
 
+  void _showReviewModal(BuildContext context, AppState appState, int productId, {double initialRating = 5.0}) {
+    double selectedRating = initialRating;
+    final TextEditingController commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20, right: 20, top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Write a Review', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Text('How would you rate this document?'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) => IconButton(
+                  icon: Icon(
+                    index < selectedRating ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 36,
+                  ),
+                  onPressed: () => setModalState(() => selectedRating = index + 1.0),
+                )),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Share your experience...',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: isSubmitting ? null : () async {
+                    // 1. Validation
+                    if (commentController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a comment')));
+                      return;
+                    }
+
+                    setModalState(() => isSubmitting = true);
+
+                    try {
+                      // 2. UPDATED: Call appState.submitReview
+                      // We pass productId, selectedRating, and the comment.
+                      // The appState logic already knows the user's ID and Name.
+                      await appState.submitReview(
+                          productId,
+                          selectedRating,
+                          commentController.text.trim()
+                      );
+
+                      if (context.mounted) {
+                        Navigator.pop(context); // Close the modal
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Review posted! Thank you.')));
+
+                        // 3. Refresh the local review list on this screen
+                        _fetchReviews();
+                      }
+                    } catch (e) {
+                      setModalState(() => isSubmitting = false);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to post review: $e')));
+                      }
+                    }
+                  },
+                  child: isSubmitting
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Post Review'),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
@@ -30,141 +153,170 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final isDarkTheme = theme.brightness == Brightness.dark;
     final productId = int.tryParse(appState.selectedProductId ?? '') ?? 1;
 
-    // Logic to handle loading/empty state
-    if (appState.products.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     final product = appState.products.firstWhere(
           (p) => p.id == productId,
       orElse: () => appState.products.first,
     );
 
     final isOwned = appState.ownedProductIds.contains(product.id);
-    final priceText = product.isFree ? 'FREE' : '${product.price} Tokens';
-    final Color readButtonColor = const Color(0xFF24E3C6);
-    IconData typeIcon = product.type == 'Notes' ? Icons.note_alt : Icons.book;
-    final bool hasCustomImage = product.imageUrl.isNotEmpty;
-
-    // ... [Keep helper widget buildPlaceholderMedia same as before] ...
-    Widget buildPlaceholderMedia(IconData icon) {
-      return Container(
-        height: 180,
-        decoration: BoxDecoration(
-          color: isDarkTheme ? const Color(0xFF4C4435) : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        alignment: Alignment.center,
-        child: Icon(icon, size: 70, color: isDarkTheme ? const Color(0xFFC6A153) : theme.colorScheme.primary.withAlpha(179)),
-      );
-    }
-
-    Widget mediaWidget = buildPlaceholderMedia(typeIcon);
-    if (hasCustomImage) {
-      mediaWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.network(product.imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover, errorBuilder: (c, e, s) => buildPlaceholderMedia(typeIcon)),
-      );
-    }
-
-    final int reviewsToDisplayCount = _showAllReviews ? product.reviewCount : _initialReviewCount;
-    final int effectiveReviewsCount = reviewsToDisplayCount > product.reviewCount ? product.reviewCount : reviewsToDisplayCount;
-    final bool canShowAll = product.reviewCount > _initialReviewCount;
+    final totalRealCount = _realReviews.length;
+    final int displayCount = _showAllReviews ? totalRealCount : (_initialReviewCount > totalRealCount ? totalRealCount : _initialReviewCount);
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface, onPressed: appState.navigateBack),
-        title: Text(' ', style: theme.textTheme.titleLarge),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: appState.navigateBack
+        ),
         actions: [
-          IconButton(icon: Icon(Icons.share_outlined, color: isDarkTheme ? Colors.white54 : theme.colorScheme.onSurface.withAlpha(153)), onPressed: () {}),
+          IconButton(
+              icon: const Icon(Icons.share_outlined),
+              onPressed: () => Share.share('Check out "${product.title}" on EduDoc!')
+          ),
         ],
       ),
-      extendBodyBehindAppBar: true,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16.0, 100.0, 16.0, 16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(product.title, style: TextStyle(color: isDarkTheme ? Colors.white : theme.colorScheme.onSurface, fontSize: 30, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text('by ${product.author}', style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.grey.shade700, fontSize: 16)),
+            Text(product.title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            Text('by ${product.author}', style: const TextStyle(fontSize: 16, color: Colors.grey)),
             const SizedBox(height: 16),
+
+            // Interactive Star Rating Summary Block
             Row(
               children: [
-                Text('Type: ${product.type}  |  Category: ${product.category}', style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.black87, fontSize: 15)),
-                const Spacer(),
-                Text('Pages: ${product.pages}', style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.black87, fontSize: 15)),
+                Row(
+                  children: List.generate(5, (index) => GestureDetector(
+                    onTap: () => _showReviewModal(context, appState, product.id, initialRating: index + 1.0),
+                    child: Icon(
+                      index < product.rating.floor() ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 24,
+                    ),
+                  )),
+                ),
+                const SizedBox(width: 8),
+                Text(product.rating.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(' ($totalRealCount reviews)', style: const TextStyle(color: Colors.grey)),
               ],
             ),
-            const SizedBox(height: 16),
-            ClipRRect(borderRadius: BorderRadius.circular(16), child: mediaWidget),
-            const SizedBox(height: 24),
-            isOwned
-                ? SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => appState.navigate(AppScreen.reading, id: product.id.toString()),
-                icon: const Icon(Icons.menu_book, color: Colors.black),
-                label: const Text('Read Document', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(backgroundColor: readButtonColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 16)),
+
+            const SizedBox(height: 20),
+            if (product.imageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(product.imageUrl, height: 200, width: double.infinity, fit: BoxFit.cover),
               ),
-            )
-                : Row(
+
+            const SizedBox(height: 24),
+            Text('Description', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(product.description, style: const TextStyle(height: 1.5)),
+
+            const SizedBox(height: 32),
+            // Primary Actions (Read or Buy)
+            isOwned
+                ? Row(
               children: [
+                // READ NOW BUTTON
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _handleAddToCart(context, appState, product),
-                    icon: Icon(product.isFree ? Icons.download : Icons.shopping_bag, color: Colors.white),
-                    label: Text(product.isFree ? 'Download Now' : 'Add To Cart', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 16)),
+                    onPressed: () => appState.navigate(AppScreen.reading, id: product.id.toString()),
+                    icon: const Icon(Icons.menu_book),
+                    label: const Text('Read Now'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Consumer<AppState>(
-                  builder: (context, appState, child) {
-                    final isBookmarked = appState.bookmarkedProductIds.contains(product.id);
-                    return IconButton(
-                      onPressed: () {
-                        appState.toggleBookmark(product.id);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isBookmarked ? 'Removed from Wishlist' : 'Added to Wishlist'), duration: const Duration(milliseconds: 1000)));
-                      },
-                      icon: Icon(isBookmarked ? Icons.bookmark_added_rounded : Icons.bookmark_add_rounded, color: isBookmarked ? theme.colorScheme.secondary : theme.colorScheme.onSurface.withAlpha(179)),
-                      style: IconButton.styleFrom(side: BorderSide(color: Colors.grey.shade400, width: 1), padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    );
-                  },
+
+                // OFFLINE DOWNLOAD BUTTON
+                // Checks if this specific product is currently downloading
+                if (appState.downloadProgress.containsKey(product.id.toString()))
+                  const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                  )
+                else
+                  OutlinedButton(
+                    onPressed: () {
+                      appState.downloadDocument(product);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Download started...')),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                      side: BorderSide(color: theme.colorScheme.primary),
+                    ),
+                    child: const Icon(Icons.download_for_offline),
+                  ),
+              ],
+            )
+                : Row(children: [
+              Expanded(child: ElevatedButton(
+                onPressed: () => _handleAddToCart(context, appState, product),
+                child: Text(product.isFree ? 'Download' : 'Add to Cart'),
+              ))
+            ]),
+
+            const Divider(height: 60),
+
+            // Detailed Reviews List
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('User Reviews', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                if (isOwned) TextButton(
+                  onPressed: () => _showReviewModal(context, appState, product.id),
+                  child: const Text('Write a Review'),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Text(priceText, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: theme.colorScheme.tertiary)),
-                const SizedBox(width: 12),
-                const Icon(Icons.star, color: Colors.yellowAccent, size: 22),
-                const SizedBox(width: 4),
-                Flexible(child: Text('${product.rating} (${product.reviewCount} Reviews)', style: TextStyle(color: isDarkTheme ? Colors.grey.shade400 : Colors.grey.shade700, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(product.details, style: TextStyle(color: isDarkTheme ? Colors.white70 : Colors.black87, fontSize: 15)),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8.0,
-              children: product.tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: tag == 'STEM' || tag == 'Tech' ? Colors.teal : Colors.indigo, borderRadius: BorderRadius.circular(30)), child: Text(tag, style: const TextStyle(color: Colors.white)))).toList(),
-            ),
-            const SizedBox(height: 28),
-            Text('User Reviews (${product.reviewCount})', style: TextStyle(color: theme.colorScheme.secondary, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Column(
-              children: List.generate(effectiveReviewsCount, (index) => Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: theme.cardColor.withAlpha(isDarkTheme ? 128 : 255), borderRadius: BorderRadius.circular(12)), child: ListTile(leading: Icon(Icons.account_circle, color: isDarkTheme ? Colors.white54 : theme.colorScheme.primary), title: Text("User ${index + 1}"), subtitle: const Text('Great notes!'), trailing: Text('${(product.rating - 0.1).toStringAsFixed(1)} ★', style: const TextStyle(color: Colors.amberAccent))))),
-            ),
-            if (canShowAll && !_showAllReviews)
-              TextButton(onPressed: () => setState(() => _showAllReviews = true), child: Text('View All Reviews', style: TextStyle(color: theme.colorScheme.secondary))),
-            if (_showAllReviews)
-              TextButton(onPressed: () => setState(() => _showAllReviews = false), child: Text('Hide Extra Reviews', style: TextStyle(color: theme.colorScheme.secondary))),
-            const SizedBox(height: 42),
+
+            if (_isLoadingReviews)
+              const Center(child: CircularProgressIndicator())
+            else if (_realReviews.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text('No reviews yet. Be the first!')),
+              )
+            else
+              Column(
+                children: [
+                  ...List.generate(displayCount, (index) {
+                    final review = _realReviews[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(child: Icon(Icons.person)),
+                      title: Text(review.userName ?? 'Verified User'),
+                      subtitle: Text(review.comment),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
+                          Text(' ${review.rating.round()}'),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (totalRealCount > _initialReviewCount)
+                    TextButton(
+                      onPressed: () => setState(() => _showAllReviews = !_showAllReviews),
+                      child: Text(_showAllReviews ? 'Show Less' : 'View All $totalRealCount Reviews'),
+                    ),
+                ],
+              ),
+            const SizedBox(height: 40),
           ],
         ),
       ),

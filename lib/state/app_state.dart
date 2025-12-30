@@ -1,68 +1,74 @@
 // lib/state/app_state.dart
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'package:local_auth/local_auth.dart';
+import 'package:image_picker/image_picker.dart';
+
+// Services
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../services/file_service.dart';
+import '../services/notification_service.dart';
+
+// Models
 import '../models/product.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
 import '../models/offer.dart';
 
+// ---------------------------------------------------------------------------
+// APP SCREEN ENUM
+// ---------------------------------------------------------------------------
 enum AppScreen {
-  welcome,
-  login,
-  signup,
-  verifyEmail, // Screen for entering OTP
-  permissions,
-  lockUnlock,
-  home,
-  search,
-  productDetails,
-  cart,
-  wallet,
-  profile,
-  settings,
-  bookmarks,
-  library,
-  offers,
-  offerDetails,
-  userActivity,
-  adminDashboard,
-  reading,
-  profileEdit,
-  emailManagement,
-  changePassword,
-  about,
-  helpSupport,
+  splash, welcome, login, signup, verifyEmail, permissions, lockUnlock,
+  home, search, productDetails, cart, wallet, profile, settings,
+  bookmarks, library, offers, offerDetails, userActivity, adminDashboard,
+  reading, profileEdit, profileSetup, emailManagement, changePassword,
+  about, helpSupport,
 }
 
+// ---------------------------------------------------------------------------
+// APP STATE CLASS
+// ---------------------------------------------------------------------------
 class AppState extends ChangeNotifier {
+  String? _transactionPin;
+  bool get isTransactionPinSet => _transactionPin != null && _transactionPin!.isNotEmpty;
+  bool _isPinSet = false;
+  bool get isPinSet => _isPinSet;
+
   // --- Services ---
   final DataService _dataService = DataService();
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService = NotificationService();
+  final FileService _fileService = FileService();
 
   // --- Global State ---
-  AppScreen _currentScreen = AppScreen.welcome;
+  AppScreen _currentScreen = AppScreen.splash;
   final List<AppScreen> _historyStack = [];
 
-  // Subscription for Auth State Changes (Google Login)
+  // Subscription
+  StreamSubscription<List<Map<String, dynamic>>>? _walletSubscription;
   late final StreamSubscription<supabase.AuthState> _authSubscription;
+
+  DateTime? _lastPausedTime;
+  int _autoLockSeconds = 300;
 
   // --- Data Lists ---
   List<Product> _products = [];
   List<Offer> _offers = [];
+  String _selectedCategory = 'All';
 
   bool _isLoadingProducts = false;
   bool _isLoadingOffers = false;
 
   // --- User/Profile State ---
-  int _walletTokens = 450;
+  int _walletTokens = 0;
   List<Transaction> _transactionHistory = [];
-  List<int> _ownedProductIds = [101, 102];
+  List<int> _ownedProductIds = [];
   final List<int> _bookmarkedProductIds = [];
   final List<Product> _cartItems = [];
 
@@ -75,6 +81,7 @@ class AppState extends ChangeNotifier {
   bool _isBiometricEnabled = false;
   bool _areNotificationsEnabled = true;
   bool _isPromoEmailEnabled = false;
+  bool _hasSkippedSetup = false;
 
   // --- Reader Settings ---
   String _readerPageFlipping = 'Horizontal';
@@ -85,38 +92,45 @@ class AppState extends ChangeNotifier {
 
   // --- User Profile Object ---
   User _currentUser = User(
-    id: '',
-    fullName: '',
-    email: '',
-    phoneNumber: '',
-    bio: '',
-    profileImageBase64: null,
+    id: '', fullName: '', email: '', phoneNumber: '', profileImageUrl: null,
   );
 
   bool _isImageProcessing = false;
 
   // --- Auth/Lock Screen State ---
   String _pinCode = '';
+  // ✅ RESTORED: Needed by LockScreen
   final String correctPin = '1234';
   bool _showPasswordUnlock = false;
-  String? _pendingEmail; // Stores email during signup for verification
+  String? _pendingEmail;
 
   // --- Home/Pagination State ---
   String _homeFilter = 'All';
   int _homeCurrentPage = 1;
   final int itemsPerPage = 6;
+  List<String> _searchHistory = [];
+  Map<String, double> _downloadProgress = {};
 
-  // --- Getters ---
+  // -------------------------------------------------------------------------
+  // GETTERS
+  // -------------------------------------------------------------------------
   AppScreen get currentScreen => _currentScreen;
   String get userRole => _userRole;
   bool get isDarkTheme => _isDarkTheme;
   int get walletTokens => _walletTokens;
+  bool get isProfileIncomplete => _currentUser.phoneNumber.isEmpty;
+  int get autoLockSeconds => _autoLockSeconds;
+  String get selectedCategory => _selectedCategory;
 
+  // ✅ RESTORED: Needed by SettingsScreen
+  Future<List<BiometricType>> get enrolledBiometrics => _authService.getAvailableBiometrics();
+
+  bool get isBiometricEnabled => _isBiometricEnabled;
   List<Product> get products => _products;
   List<Offer> get offers => _offers;
   bool get isLoadingProducts => _isLoadingProducts;
   bool get isLoadingOffers => _isLoadingOffers;
-
+  List<String> get searchHistory => _searchHistory;
   List<Product> get cartItems => _cartItems;
   List<int> get bookmarkedProductIds => _bookmarkedProductIds;
   List<int> get ownedProductIds => _ownedProductIds;
@@ -125,8 +139,7 @@ class AppState extends ChangeNotifier {
   String get homeFilter => _homeFilter;
   int get homeCurrentPage => _homeCurrentPage;
   List<Transaction> get transactionHistory => _transactionHistory;
-
-  bool get isBiometricEnabled => _isBiometricEnabled;
+  Map<String, double> get downloadProgress => _downloadProgress;
   bool get areNotificationsEnabled => _areNotificationsEnabled;
   bool get isPromoEmailEnabled => _isPromoEmailEnabled;
 
@@ -141,7 +154,28 @@ class AppState extends ChangeNotifier {
   String? get selectedProductId => _selectedProductId;
   String? get selectedOfferId => _selectedOfferId;
 
-  // --- Constructor & Initialization ---
+  List<Product> get filteredProducts {
+    if (_selectedCategory == 'All') {
+      return _products;
+    }
+    return _products.where((p) => p.category == _selectedCategory).toList();
+  }
+
+  List<Product> get topRatedProducts {
+    List<Product> sorted = List.from(_products);
+    sorted.sort((a, b) => b.rating.compareTo(a.rating));
+    return sorted.take(6).toList();
+  }
+
+  List<Product> get newArrivals {
+    List<Product> sorted = List.from(_products);
+    sorted.sort((a, b) => b.id.compareTo(a.id));
+    return sorted.take(6).toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // CONSTRUCTOR & INITIALIZATION
+  // -------------------------------------------------------------------------
   AppState() {
     _initApp();
   }
@@ -149,169 +183,388 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _authSubscription.cancel();
+    _walletSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _initApp() async {
-    // 1. Set up Auth Listener (Handles Google Login Redirect)
+    await _notificationService.init();
+    await loadTransactionPin();
+    await _loadLocalData();
+    await fetchProducts();
+    await fetchOffers();
+
     _authSubscription = supabase.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final session = data.session;
       final event = data.event;
 
       if (event == supabase.AuthChangeEvent.signedIn && session != null) {
-        // User just signed in (e.g. via Google deep link)
         _handleAutoLogin();
+        _loadUserDataFromDb(session.user.id);
+        _startWalletListener(session.user.id);
       } else if (event == supabase.AuthChangeEvent.signedOut) {
         _currentScreen = AppScreen.welcome;
+        _walletTokens = 0;
+        _cartItems.clear();
+        _transactionHistory.clear();
+        _ownedProductIds.clear();
         notifyListeners();
+        _walletSubscription?.cancel();
+        _walletSubscription = null;
       }
     });
 
-    // 2. Check Initial Session
     final session = supabase.Supabase.instance.client.auth.currentSession;
     if (session != null) {
       await _handleAutoLogin();
+      await _loadUserDataFromDb(session.user.id);
+      _startWalletListener(session.user.id);
     } else {
       _currentScreen = AppScreen.welcome;
+      notifyListeners();
     }
+  }
 
-    // 3. Load Data
-    await _loadLocalData();
-    fetchProducts();
-    fetchOffers();
+  // -------------------------------------------------------------------------
+  // RESTORED HELPERS (Fixing Undefined Methods)
+  // -------------------------------------------------------------------------
 
+  // ✅ RESTORED: Needed by LibraryScreen
+  Future<void> refreshData() async {
+    notifyListeners();
+    await Future.wait([fetchProducts(), fetchOffers()]);
+
+    final user = _authService.currentSupabaseUser;
+    if (user != null) {
+      await _loadUserDataFromDb(user.id);
+      // Ensure wallet is up to date
+      await refreshWalletData();
+    }
     notifyListeners();
   }
 
-  // Helper to fetch profile and redirect
+  // ✅ RESTORED: Needed by HomeScreen
+  void applyHomeFilter(String f) {
+    _homeFilter = f;
+    _homeCurrentPage = 1;
+    notifyListeners();
+  }
+
+  // ✅ RESTORED: Needed by HomeScreen
+  void goToPage(int p) {
+    _homeCurrentPage = p;
+    notifyListeners();
+  }
+
+  // ✅ RESTORED: Needed by LockScreen
+  void togglePinView(bool show) {
+    _showPasswordUnlock = show;
+    _pinCode = '';
+    notifyListeners();
+  }
+
+  // ✅ RESTORED: Needed by ProfileEditScreen
+  void setImageProcessing(bool processing) {
+    _isImageProcessing = processing;
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------------------
+  // AUTH LOGIC
+  // -------------------------------------------------------------------------
+
   Future<void> _handleAutoLogin() async {
-    final userProfile = await _authService.fetchUserProfile();
-    if (userProfile != null) {
-      _currentUser = userProfile;
-    }
-
-    // Only redirect if we are currently on an auth screen
-    // This prevents random redirects if the user is already browsing
-    if (_currentScreen == AppScreen.welcome ||
-        _currentScreen == AppScreen.login ||
-        _currentScreen == AppScreen.signup ||
-        _currentScreen == AppScreen.verifyEmail) {
-      navigate(AppScreen.home);
-    }
-    notifyListeners();
-  }
-
-  // -------------------------------------------------------
-  // ✅ AUTH METHODS (Login, Signup, Verify, Google)
-  // -------------------------------------------------------
-
-  Future<void> login(String email, String password, BuildContext context) async {
     try {
-      await _authService.signIn(email, password);
-      await _handleAutoLogin(); // Fetch profile & redirect
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Login Failed: ${e.toString().replaceAll('AuthException:', '')}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> loginWithGoogle(BuildContext context) async {
-    try {
-      // Opens browser. When done, it redirects back to app,
-      // triggering the onAuthStateChange listener in _initApp.
-      await _authService.signInWithGoogle();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign-In Failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> signup(String email, String password, String fullName, BuildContext context) async {
-    try {
-      await _authService.signUp(email, password, fullName);
-
-      final session = supabase.Supabase.instance.client.auth.currentSession;
-
-      if (session != null) {
-        // Auto-login successful (Email confirmation disabled)
-        await _handleAutoLogin();
-      } else {
-        // Email confirmation required
-        _pendingEmail = email;
-        navigate(AppScreen.verifyEmail);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Code sent! Please check your email.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
-          ),
-        );
+      final userProfile = await _authService.fetchUserProfile();
+      if (userProfile != null) {
+        _currentUser = userProfile;
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      bool biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
+      String? storedPin = await const FlutterSecureStorage().read(key: 'user_pin');
+      bool isSecurityActive = biometricEnabled || storedPin != null;
+
+      if ([AppScreen.welcome, AppScreen.login, AppScreen.signup, AppScreen.verifyEmail, AppScreen.splash].contains(_currentScreen)) {
+        if (isSecurityActive) {
+          navigate(AppScreen.lockUnlock);
+        } else {
+          if (isProfileIncomplete && !_hasSkippedSetup) {
+            navigate(AppScreen.profileSetup);
+          } else {
+            navigate(AppScreen.home);
+          }
+        }
+      }
+      notifyListeners();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Signup Failed: ${e.toString().replaceAll('AuthException:', '')}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      debugPrint("Error in auto-login: $e");
+      navigate(AppScreen.welcome);
     }
   }
 
-  Future<void> verifyOtp(String token, BuildContext context) async {
-    if (_pendingEmail == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: No email found. Please sign up again.')),
-      );
-      return;
+  void handleAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _lastPausedTime = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_lastPausedTime != null && _autoLockSeconds != -1) {
+        final difference = DateTime.now().difference(_lastPausedTime!).inSeconds;
+        if (difference > _autoLockSeconds && isPinSet) {
+          navigate(AppScreen.lockUnlock);
+          return;
+        }
+      }
+      _lastPausedTime = null;
+
+      if ([AppScreen.login, AppScreen.signup, AppScreen.welcome].contains(_currentScreen)) {
+        final session = supabase.Supabase.instance.client.auth.currentSession;
+        if (session != null) {
+          _handleAutoLogin();
+        }
+      }
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // PROFILE & SETTINGS ACTIONS
+  // -------------------------------------------------------------------------
+
+  // ✅ RESTORED: Needed by ProfileSetupScreen
+  Future<void> saveProfile({
+    required String fullName,
+    String? username,
+    required String email,
+    required String phoneNumber,
+    required String bio,
+    String? gender,
+    DateTime? dateOfBirth,
+    String? profileImageUrl,
+  }) async {
+    _currentUser = _currentUser.copyWith(
+      fullName: fullName,
+      email: email,
+      phoneNumber: phoneNumber,
+      profileImageUrl: profileImageUrl,
+    );
+    notifyListeners();
+
+    await _authService.updateUserProfile(_currentUser);
+
+    if (_currentScreen == AppScreen.profileSetup) {
+      navigate(AppScreen.home);
+    } else {
+      navigate(AppScreen.profile);
+    }
+  }
+
+  // ✅ RESTORED: Needed by ProfileEditScreen
+  Future<void> pickAndUploadProfileImage(BuildContext context) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+
+    if (image == null) return;
+
+    setImageProcessing(true);
 
     try {
-      await _authService.verifyEmailOtp(_pendingEmail!, token);
-      await _handleAutoLogin(); // Fetch profile & redirect
-      _pendingEmail = null;
+      final user = _authService.currentSupabaseUser;
+      if (user == null) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email verified! Welcome.')),
-      );
+      final fileBytes = await image.readAsBytes();
+      final fileExt = image.path.split('.').last;
+      final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
 
+      await supabase.Supabase.instance.client.storage
+          .from('profiles')
+          .uploadBinary(fileName, fileBytes);
+
+      final String publicUrl = supabase.Supabase.instance.client.storage
+          .from('profiles')
+          .getPublicUrl(fileName);
+
+      _currentUser = _currentUser.copyWith(profileImageUrl: publicUrl);
+      await _authService.updateUserProfile(_currentUser);
+
+      notifyListeners();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile picture updated!')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification Failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red));
+      }
+    } finally {
+      setImageProcessing(false);
     }
   }
 
-  Future<void> logout() async {
-    await _authService.signOut();
+  // ✅ RESTORED: Needed by ProfileSetupScreen
+  Future<void> skipProfileSetup() async {
+    _hasSkippedSetup = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_skipped_profile_setup', true);
+    navigate(AppScreen.home);
+  }
 
-    // Reset User State
-    _currentUser = User(id: '', fullName: '', email: '', phoneNumber: '', bio: '', profileImageBase64: null);
-    _walletTokens = 0;
-    _ownedProductIds = [];
-    _cartItems.clear();
+  // ✅ RESTORED: Needed by ChangePasswordScreen
+  Future<void> changePassword(String currentPassword, String newPassword, BuildContext context) async {
+    bool isVerified = await _authService.verifyCurrentPassword(currentPassword);
+    if (!isVerified) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Current password incorrect.'), backgroundColor: Colors.red));
+      return;
+    }
+    try {
+      await supabase.Supabase.instance.client.auth.updateUser(
+        supabase.UserAttributes(password: newPassword),
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully!')));
+        navigateBack();
+      }
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    }
+  }
 
-    _historyStack.clear();
-    _currentScreen = AppScreen.login;
+  // ✅ RESTORED: Needed by EmailManagementScreen
+  Future<void> updateEmail(String currentPassword, String newEmail, BuildContext context) async {
+    bool isVerified = await _authService.verifyCurrentPassword(currentPassword);
+    if (!isVerified) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Current password incorrect.'), backgroundColor: Colors.red));
+      return;
+    }
+    try {
+      await supabase.Supabase.instance.client.auth.updateUser(supabase.UserAttributes(email: newEmail));
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification link sent to new email address.')));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    }
+  }
 
+  // ✅ RESTORED: Needed by SettingsScreen
+  Future<void> updateBiometricPreference(bool enable) async {
+    bool authenticated = await _authService.authenticateWithBiometrics();
+    if (authenticated) {
+      final prefs = await SharedPreferences.getInstance();
+      if (enable) {
+        bool canUse = await _authService.isBiometricsAvailable;
+        if (canUse) {
+          _isBiometricEnabled = true;
+          await prefs.setBool('biometric_enabled', true);
+        }
+      } else {
+        _isBiometricEnabled = false;
+        await prefs.setBool('biometric_enabled', false);
+      }
+      notifyListeners();
+    }
+  }
+
+  // ✅ RESTORED: Needed by SettingsScreen
+  Future<void> updateUserPin(String newPin) async {
+    await _authService.saveUserPin(newPin);
     notifyListeners();
   }
 
-  // -------------------------------------------------------
-  // DATA & UI LOGIC
-  // -------------------------------------------------------
+  // ✅ RESTORED: Needed by SettingsScreen
+  Future<void> resetTransactionPin(String password, String newPin, BuildContext context) async {
+    bool isVerified = await _authService.verifyCurrentPassword(password);
+    if (!isVerified) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Incorrect account password.'), backgroundColor: Colors.red));
+      return;
+    }
+    await setTransactionPin(newPin);
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction PIN reset successfully!')));
+  }
+
+  // ✅ RESTORED: Needed by SettingsScreen
+  Future<void> requestAccountDeletion(String password, BuildContext context) async {
+    bool isVerified = await _authService.verifyCurrentPassword(password);
+    if (!isVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Incorrect password.'), backgroundColor: Colors.red));
+      return;
+    }
+    try {
+      await _authService.deleteAccount();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account successfully deleted.')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // CHECKOUT & TRANSACTIONS (SECURE RPC)
+  // -------------------------------------------------------------------------
+
+  Future<void> checkout() async {
+    final user = _authService.currentSupabaseUser;
+    if (user == null) return;
+
+    try {
+      final response = await _dataService.purchaseCart(user.id);
+
+      if (response['success'] == true) {
+        debugPrint("Checkout Successful!");
+        await refreshWalletData();
+        await _loadUserDataFromDb(user.id);
+        notifyListeners();
+      } else {
+        debugPrint("Checkout Failed: ${response['message']}");
+      }
+    } catch (e) {
+      debugPrint("❌ CRITICAL ERROR DURING CHECKOUT: $e");
+    }
+  }
+
+  Future<void> buyTokens(int amount) async {
+    final user = _authService.currentSupabaseUser;
+    if (user == null) return;
+    try {
+      await _dataService.addTokensSecurely(user.id, amount);
+      if (_areNotificationsEnabled) {
+        _notificationService.showNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: 'Wallet Updated',
+          body: 'Success! $amount Tokens purchased.',
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Token Update Failed: $e");
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // DATA LOADING & ACTIONS
+  // -------------------------------------------------------------------------
+
+  Future<void> _loadUserDataFromDb(String userId) async {
+    try {
+      final ownedIds = await _dataService.getOwnedProductIds(userId);
+      _ownedProductIds = List<int>.from(ownedIds);
+
+      _walletTokens = await _dataService.getUserWalletBalance(userId);
+      _transactionHistory = await _dataService.getUserTransactions(userId);
+
+      final bookmarkIds = await _dataService.getBookmarkProductIds(userId);
+      _bookmarkedProductIds.clear();
+      _bookmarkedProductIds.addAll(bookmarkIds);
+
+      final cartIds = await _dataService.getCartProductIds(userId);
+      _cartItems.clear();
+      for (int id in cartIds) {
+        if (_products.any((p) => p.id == id)) {
+          final product = _products.firstWhere((p) => p.id == id);
+          if (!_cartItems.any((item) => item.id == product.id)) {
+            _cartItems.add(product);
+          }
+        }
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading user data from DB: $e");
+    }
+  }
 
   Future<void> fetchProducts() async {
     _isLoadingProducts = true;
@@ -345,50 +598,73 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // --- Local Storage Logic ---
+  Future<void> refreshWalletData() async {
+    final user = _authService.currentSupabaseUser;
+    if (user == null) return;
+    try {
+      final results = await Future.wait([
+        _dataService.getUserWalletBalance(user.id),
+        _dataService.getUserTransactions(user.id),
+      ]);
+      _walletTokens = results[0] as int;
+      _transactionHistory = results[1] as List<Transaction>;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error refreshing wallet: $e");
+    }
+  }
 
-  Future<void> _loadLocalData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final String? historyJson = prefs.getString('transaction_history');
-    if (historyJson != null) {
-      try {
-        final List<dynamic> decodedList = json.decode(historyJson);
-        _transactionHistory = decodedList.map((item) => Transaction.fromMap(item)).toList();
-      } catch (e) {
-        debugPrint('Error parsing transaction history: $e');
+  void _startWalletListener(String userId) {
+    _walletSubscription?.cancel();
+    _walletSubscription = supabase.Supabase.instance.client
+        .from('wallets')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .listen((List<Map<String, dynamic>> data) {
+      if (data.isNotEmpty) {
+        final newBalance = data.first['balance'] as int;
+        if (_walletTokens != newBalance) {
+          _walletTokens = newBalance;
+          notifyListeners();
+        }
       }
-    }
-
-    final List<String>? ownedList = prefs.getStringList('owned_products');
-    if (ownedList != null) {
-      _ownedProductIds = ownedList.map((e) => int.tryParse(e) ?? 0).toList();
-    }
-
-    _walletTokens = prefs.getInt('wallet_tokens') ?? 450;
-    notifyListeners();
+    });
   }
 
-  Future<void> _saveLocalData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String historyJson = json.encode(_transactionHistory.map((tx) => tx.toMap()).toList());
-    await prefs.setString('transaction_history', historyJson);
+  // ✅ RESTORED: Needed by ProductDetailScreen
+  Future<void> submitReview(int productId, double rating, String comment) async {
+    final user = _authService.currentSupabaseUser;
+    if (user == null) return;
 
-    final List<String> ownedList = _ownedProductIds.map((id) => id.toString()).toList();
-    await prefs.setStringList('owned_products', ownedList);
+    try {
+      await _dataService.addProductReview(
+        userId: user.id,
+        productId: productId,
+        rating: rating,
+        comment: comment,
+      );
 
-    await prefs.setInt('wallet_tokens', _walletTokens);
+      // Update local product state optimistically or re-fetch
+      final index = _products.indexWhere((p) => p.id == productId);
+      if (index != -1) {
+        final p = _products[index];
+        double newRating = ((p.rating * p.reviewCount) + rating) / (p.reviewCount + 1);
+        _products[index] = p.copyWith(rating: newRating, reviewCount: p.reviewCount + 1);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error submitting review: $e");
+    }
   }
 
-  // --- Navigation ---
+  // -------------------------------------------------------------------------
+  // NAVIGATION & UI
+  // -------------------------------------------------------------------------
+
   void navigate(AppScreen screen, {String? id}) {
     final List<AppScreen> rootScreens = [
-      AppScreen.home,
-      AppScreen.library,
-      AppScreen.cart,
-      AppScreen.profile,
-      AppScreen.settings,
-      AppScreen.offers,
+      AppScreen.home, AppScreen.library, AppScreen.cart,
+      AppScreen.profile, AppScreen.settings, AppScreen.offers, AppScreen.welcome,
     ];
 
     if (rootScreens.contains(screen)) {
@@ -396,7 +672,9 @@ class AppState extends ChangeNotifier {
     } else if (_currentScreen != screen && _currentScreen != AppScreen.welcome) {
       _historyStack.add(_currentScreen);
     }
-
+    if (id != null) {
+      _selectedProductId = id;
+    }
     _currentScreen = screen;
     _selectedProductId = (screen == AppScreen.productDetails || screen == AppScreen.reading) ? id : null;
     _selectedOfferId = (screen == AppScreen.offerDetails) ? id : null;
@@ -406,51 +684,224 @@ class AppState extends ChangeNotifier {
 
   void navigateBack() {
     if (_historyStack.isEmpty) {
-      _currentScreen = AppScreen.home;
-      notifyListeners();
-      return;
+      final session = supabase.Supabase.instance.client.auth.currentSession;
+      _currentScreen = (session != null) ? AppScreen.home : AppScreen.welcome;
+    } else {
+      final previousScreen = _historyStack.removeLast();
+      _currentScreen = previousScreen;
+      _selectedProductId = null;
+      _selectedOfferId = null;
     }
-    final previousScreen = _historyStack.removeLast();
-    _currentScreen = previousScreen;
-    _selectedProductId = null;
-    _selectedOfferId = null;
     notifyListeners();
   }
 
-  // --- Profile Logic ---
-  void setImageProcessing(bool processing) {
-    _isImageProcessing = processing;
+  void setCategory(String category) {
+    _selectedCategory = category;
+    _currentScreen = AppScreen.home;
     notifyListeners();
   }
 
-  void saveProfile({
-    required String fullName,
-    required String email,
-    required String phoneNumber,
-    required String bio,
-    String? profileImageBase64,
-  }) {
-    _currentUser = _currentUser.copyWith(
-      fullName: fullName,
-      email: email,
-      phoneNumber: phoneNumber,
-      bio: bio,
-      profileImageBase64: profileImageBase64,
-    );
-    notifyListeners();
-    navigate(AppScreen.profile);
+  // -------------------------------------------------------------------------
+  // FILE / DOWNLOADS
+  // -------------------------------------------------------------------------
+
+  Future<String?> getLocalPdfPath(Product product) async {
+    final fileName = "${product.id}.pdf";
+    if (await _fileService.fileExists(fileName)) {
+      return await _fileService.getLocalFilePath(fileName);
+    }
+    return null;
   }
 
-  // --- PIN Logic ---
-  void pinEnter(String digit) {
+  Future<void> downloadDocument(Product product) async {
+    if (product.pdfUrl == null || product.pdfUrl!.isEmpty) return;
+    final fileName = "${product.id}.pdf";
+    if (await _fileService.fileExists(fileName)) return;
+
+    _downloadProgress[product.id.toString()] = 0.01;
+    notifyListeners();
+
+    try {
+      final path = await _fileService.downloadAndSaveDocument(
+        url: product.pdfUrl!,
+        fileName: fileName,
+        onProgress: (progress) {
+          _downloadProgress[product.id.toString()] = progress;
+          notifyListeners();
+        },
+      );
+      if (path == null) throw "Download returned null";
+    } catch (e) {
+      debugPrint("Error downloading document: $e");
+    } finally {
+      _downloadProgress.remove(product.id.toString());
+      notifyListeners();
+    }
+  }
+
+  // ✅ RESTORED: Needed by ProductCard
+  void addToLibrary(Product product) {
+    // Note: With secure backend, usually "Add to Library" implies purchase.
+    // If you support free books, this is fine. If not, this should check payment.
+    // We will assume this is for Free Books for now.
+    if (!_ownedProductIds.contains(product.id)) {
+      _ownedProductIds.add(product.id);
+      // We should probably sync this to DB if it's a free claim
+      if (product.isFree) {
+        final user = _authService.currentSupabaseUser;
+        if (user != null) _dataService.addOwnedProduct(user.id, product.id);
+      }
+      notifyListeners();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // USER ACTIONS (Cart, Bookmark, Search)
+  // -------------------------------------------------------------------------
+
+  Future<void> addToCart(Product product) async {
+    if (_cartItems.any((item) => item.id == product.id)) return;
+    _cartItems.add(product);
+    notifyListeners();
+
+    final user = _authService.currentSupabaseUser;
+    if (user != null) await _dataService.addToCart(user.id, product.id);
+  }
+
+  // ✅ RESTORED: Needed by OffersScreen (even if we don't use mock data)
+  void addProPackToCart({bool syncToDb = true}) {
+    // Safe implementation: Do nothing or show "Coming Soon"
+    debugPrint("Pro Pack is currently disabled.");
+  }
+
+  // ✅ RESTORED: Needed by OfferDetailScreen
+  void addBundleToCart(Offer offer) {
+    // Logic to add a "Bundle" product to cart
+    // For now we can just ignore or add if you have bundle products
+    debugPrint("Bundles are currently disabled.");
+  }
+
+  Future<void> removeCartItem(int id) async {
+    _cartItems.removeWhere((item) => item.id == id);
+    notifyListeners();
+
+    final user = _authService.currentSupabaseUser;
+    if (user != null) await _dataService.removeFromCart(user.id, id);
+  }
+
+  // In lib/state/app_state.dart
+
+  Future<void> toggleBookmark(int id) async {
+    final user = _authService.currentSupabaseUser;
+
+    if (_bookmarkedProductIds.contains(id)) {
+      _bookmarkedProductIds.remove(id);
+      if (user != null) await _dataService.removeBookmark(user.id, id);
+    } else {
+      _bookmarkedProductIds.add(id);
+      if (user != null) {
+        // ✅ Pass the current user's name (or email if name is empty)
+        String nameToSend = _currentUser.fullName.isNotEmpty
+            ? _currentUser.fullName
+            : _currentUser.email;
+
+        await _dataService.addBookmark(user.id, id, nameToSend);
+      }
+    }
+    notifyListeners();
+  }
+
+  // ✅ RESTORED: Needed by SearchScreen
+  Future<void> loadSearchHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    _searchHistory = prefs.getStringList('search_history') ?? [];
+    notifyListeners();
+  }
+
+  Future<void> addToSearchHistory(String query) async {
+    if (query.isEmpty || _searchHistory.contains(query)) return;
+    _searchHistory.insert(0, query);
+    if (_searchHistory.length > 5) _searchHistory.removeLast();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('search_history', _searchHistory);
+    notifyListeners();
+  }
+
+  // ✅ RESTORED: Needed by SearchScreen
+  Future<void> removeFromSearchHistory(String query) async {
+    if (_searchHistory.contains(query)) {
+      _searchHistory.remove(query);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('search_history', _searchHistory);
+      notifyListeners();
+    }
+  }
+
+  Future<void> clearSearchHistory() async {
+    _searchHistory.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('search_history');
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------------------
+  // LOCAL DATA & SETTINGS helpers
+  // -------------------------------------------------------------------------
+
+  Future<void> _loadLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _hasSkippedSetup = prefs.getBool('has_skipped_profile_setup') ?? false;
+    _isBiometricEnabled = prefs.getBool('biometric_enabled') ?? false;
+    await loadSearchHistory();
+  }
+
+  Future<void> loadTransactionPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    _transactionPin = prefs.getString('transaction_pin');
+    notifyListeners();
+  }
+
+  Future<void> setTransactionPin(String pin) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('transaction_pin', pin);
+    _transactionPin = pin;
+    notifyListeners();
+  }
+
+  Future<bool> verifyTransactionPin(String input) async {
+    return _transactionPin == input;
+  }
+
+  // Settings Setters
+  void toggleTheme() { _isDarkTheme = !_isDarkTheme; notifyListeners(); }
+  void toggleBiometrics(bool v) { _isBiometricEnabled = v; notifyListeners(); }
+  void togglePromoEmails(bool v) { _isPromoEmailEnabled = v; notifyListeners(); }
+  Future<void> toggleAppNotifications(bool v) async {
+    _areNotificationsEnabled = v;
+    if(v) await _notificationService.requestPermissions();
+    notifyListeners();
+  }
+
+  // Reader Settings
+  void setReaderPageFlipping(String m) { _readerPageFlipping = m; _readerSettingsVersion++; notifyListeners(); }
+  void setReaderColorMode(String m) { _readerColorMode = m; _readerSettingsVersion++; notifyListeners(); }
+  void setReaderFontSize(double s) { _readerFontSize = s; _readerSettingsVersion++; notifyListeners(); }
+  void setReaderLineSpacing(double s) { _readerLineSpacing = s; _readerSettingsVersion++; notifyListeners(); }
+
+  // PIN Logic
+  void pinEnter(String digit) async {
     if (_pinCode.length < 4) {
       _pinCode += digit;
       notifyListeners();
-
       if (_pinCode.length == 4) {
-        if (_pinCode == correctPin) {
+        bool isValid = await _authService.verifyPin(_pinCode);
+        if (isValid) {
           Future.delayed(const Duration(milliseconds: 500), () {
-            navigate(AppScreen.home);
+            if (isProfileIncomplete && !_hasSkippedSetup) {
+              navigate(AppScreen.profileSetup);
+            } else {
+              navigate(AppScreen.home);
+            }
             _pinCode = '';
           });
         } else {
@@ -462,7 +913,6 @@ class AppState extends ChangeNotifier {
       }
     }
   }
-
   void pinClear() {
     if (_pinCode.isNotEmpty) {
       _pinCode = _pinCode.substring(0, _pinCode.length - 1);
@@ -470,171 +920,73 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void togglePinView(bool showPassword) {
-    _showPasswordUnlock = showPassword;
-    _pinCode = '';
-    notifyListeners();
+  // Validators
+  String? validatePhoneNumber(String? value) {
+    if (value == null || value.isEmpty) return 'Phone number is required';
+    final phoneRegex = RegExp(r'^\+?[0-9]{10,15}$');
+    if (!phoneRegex.hasMatch(value)) return 'Enter a valid phone number';
+    return null;
+  }
+  String? validateEmail(String? value) {
+    if (value == null || value.isEmpty) return 'Email is required';
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value)) return 'Enter a valid email address';
+    return null;
+  }
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) return 'Password is required';
+    if (value.length < 6) return 'Password must be at least 6 characters';
+    return null;
+  }
+  String? validateFullName(String? value) {
+    if (value == null || value.isEmpty) return 'Full name is required';
+    if (value.trim().split(' ').length < 2) return 'Enter your full name';
+    return null;
   }
 
-  // --- Toggles ---
-  void toggleTheme() {
-    _isDarkTheme = !_isDarkTheme;
-    notifyListeners();
-  }
-
-  void toggleUserRole() {
-    _userRole = _userRole == 'Admin' ? 'User' : 'Admin';
-    if (_currentScreen == AppScreen.adminDashboard || _currentScreen == AppScreen.userActivity) {
-      navigate(AppScreen.home);
-    }
-    notifyListeners();
-  }
-
-  void toggleBiometrics(bool newValue) {
-    _isBiometricEnabled = newValue;
-    notifyListeners();
-  }
-
-  void toggleAppNotifications(bool newValue) {
-    _areNotificationsEnabled = newValue;
-    notifyListeners();
-  }
-
-  void togglePromoEmails(bool newValue) {
-    _isPromoEmailEnabled = newValue;
-    notifyListeners();
-  }
-
-  // --- Reader Settings ---
-  void _incrementReaderVersion() {
-    _readerSettingsVersion++;
-  }
-
-  void setReaderPageFlipping(String mode) {
-    _readerPageFlipping = mode;
-    _incrementReaderVersion();
-    notifyListeners();
-  }
-
-  void setReaderColorMode(String mode) {
-    _readerColorMode = mode;
-    _incrementReaderVersion();
-    notifyListeners();
-  }
-
-  void setReaderFontSize(double size) {
-    _readerFontSize = size;
-    _incrementReaderVersion();
-    notifyListeners();
-  }
-
-  void setReaderLineSpacing(double spacing) {
-    _readerLineSpacing = spacing;
-    _incrementReaderVersion();
-    notifyListeners();
-  }
-
-  // --- Cart & Wallet Logic ---
-  void addToCart(Product product) {
-    if (_cartItems.any((item) => item.id == product.id)) return;
-    _cartItems.add(product);
-    notifyListeners();
-  }
-
-  void addToLibrary(Product product) {
-    if (!_ownedProductIds.contains(product.id)) {
-      _ownedProductIds.add(product.id);
-      final newTx = Transaction(
-        id: DateTime.now().millisecondsSinceEpoch + product.id,
-        type: 'Download',
-        amount: 0,
-        date: DateTime.now().toString().split(' ')[0],
-        description: 'Downloaded ${product.title}',
-      );
-      _transactionHistory.insert(0, newTx);
-      _saveLocalData();
-      notifyListeners();
-    }
-  }
-
-  void addProPackToCart() {
-    final proPack = Product(id: 999, type: 'Subscription', title: 'Annual Pro Pack', description: 'Unlimited access.', price: 300, isFree: false, category: 'Premium', tags: ['Unlimited'], rating: 5.0, author: 'EduDoc', pages: 0, reviewCount: 0, details: 'Full Access', content: 'N/A', imageUrl: '');
-    if (!_cartItems.any((item) => item.id == proPack.id)) {
-      _cartItems.add(proPack);
-      notifyListeners();
-    }
-  }
-
-  void addBundleToCart(Offer offer) {
-    if (offer.status != 'Active') return;
-    _cartItems.removeWhere((item) => item.id == 999 || item.id == offer.id);
-    final bundleProduct = Product(id: offer.id, type: 'Bundle', title: offer.title, description: 'Discount: ${offer.discount}', price: offer.tokenPrice, isFree: offer.tokenPrice == 0, category: 'Bundle', tags: [], rating: 0.0, author: 'System', pages: offer.productIds.length, reviewCount: 0, details: 'Includes ${offer.productIds.length} docs.', content: offer.productIds.map((id) => id.toString()).join(','), imageUrl: '');
-    if (!_cartItems.any((item) => item.id == bundleProduct.id)) {
-      _cartItems.add(bundleProduct);
-      notifyListeners();
-    }
-  }
-
-  void removeCartItem(int id) {
-    _cartItems.removeWhere((item) => item.id == id);
-    notifyListeners();
-  }
-
-  void buyTokens(int amount) {
-    _walletTokens += amount;
-    final newTx = Transaction(id: DateTime.now().millisecondsSinceEpoch, type: 'Credit', amount: amount, date: DateTime.now().toString().split(' ')[0], description: 'Package purchase');
-    _transactionHistory.insert(0, newTx);
-    _saveLocalData();
-    notifyListeners();
-  }
-
-  void checkout() {
-    final totalCost = _cartItems.fold(0, (sum, item) => sum + item.price);
-    if (totalCost > _walletTokens || _cartItems.isEmpty) return;
-
-    if (totalCost > 0) _walletTokens -= totalCost;
-
-    final List<int> productsToAddToLibrary = [];
-    for (var item in _cartItems) {
-      if (item.type != 'Subscription' && item.type != 'Bundle') {
-        productsToAddToLibrary.add(item.id);
+  // ✅ RESTORED: Auth Helpers (Sign up / Login)
+  Future<void> signup(String email, String password, String fullName, BuildContext context) async {
+    try {
+      await _authService.signUp(email, password, fullName);
+      final session = supabase.Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        _pendingEmail = email;
+        navigate(AppScreen.verifyEmail);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verification email sent.'), backgroundColor: Colors.green));
       }
-      if (item.type == 'Bundle' && item.content.isNotEmpty) {
-        try {
-          final List<int> bundledIds = item.content.split(',').map((idStr) => int.tryParse(idStr)).whereType<int>().toList();
-          productsToAddToLibrary.addAll(bundledIds);
-        } catch (e) {
-          debugPrint('Error parsing bundle IDs: $e');
-        }
-      }
-      final newTx = Transaction(id: DateTime.now().millisecondsSinceEpoch + item.id, type: item.isFree ? 'Download' : 'Debit', amount: item.price, date: DateTime.now().toString().split(' ')[0], description: item.isFree ? 'Downloaded ${item.title}' : 'Purchased ${item.title}');
-      _transactionHistory.insert(0, newTx);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Signup Failed: $e'), backgroundColor: Colors.red));
     }
-    for (int id in productsToAddToLibrary) {
-      if (!_ownedProductIds.contains(id)) _ownedProductIds.add(id);
-    }
-    _cartItems.clear();
-    _saveLocalData();
-    notifyListeners();
   }
 
-  void toggleBookmark(int id) {
-    if (_bookmarkedProductIds.contains(id)) {
-      _bookmarkedProductIds.remove(id);
-    } else {
-      _bookmarkedProductIds.add(id);
+  Future<void> login(String email, String password, BuildContext context) async {
+    try {
+      await _authService.signIn(email, password);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login Failed: $e'), backgroundColor: Colors.red));
     }
-    notifyListeners();
   }
 
-  void applyHomeFilter(String filter) {
-    _homeFilter = filter;
-    _homeCurrentPage = 1;
-    notifyListeners();
+  Future<void> loginWithGoogle(BuildContext context) async {
+    try {
+      await _authService.signInWithGoogle();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google Sign-In Failed: $e'), backgroundColor: Colors.red));
+    }
   }
 
-  void goToPage(int page) {
-    _homeCurrentPage = page;
-    notifyListeners();
+  Future<void> verifyOtp(String token, BuildContext context) async {
+    if (_pendingEmail == null) return;
+    try {
+      await _authService.verifyEmailOtp(_pendingEmail!, token);
+      _pendingEmail = null;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email verified! Welcome.')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification Failed: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> logout() async {
+    await _authService.signOut();
   }
 }

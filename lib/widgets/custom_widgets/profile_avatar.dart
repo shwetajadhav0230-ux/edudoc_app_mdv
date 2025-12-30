@@ -19,11 +19,11 @@ class ProfileAvatar extends StatelessWidget {
 
         Widget avatarWidget;
 
-        if (user.profileImageBase64 != null &&
-            user.profileImageBase64!.isNotEmpty) {
+        if (user.profileImageUrl != null &&
+            user.profileImageUrl!.isNotEmpty) {
           // Display image from Base64 string
           try {
-            final imageBytes = base64Decode(user.profileImageBase64!);
+            final imageBytes = base64Decode(user.profileImageUrl!);
             avatarWidget = CircleAvatar(
               backgroundImage: MemoryImage(imageBytes),
               radius: 16,

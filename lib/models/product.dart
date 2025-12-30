@@ -1,5 +1,3 @@
-// ... existing code ...
-
 class Product {
   final int id;
   final String type;
@@ -7,6 +5,7 @@ class Product {
   final String description;
   final int price;
   final bool isFree;
+  final bool isHardCopy;
   final String category;
   final List<String> tags;
   final double rating;
@@ -25,6 +24,7 @@ class Product {
     required this.description,
     required this.price,
     required this.isFree,
+    this.isHardCopy = false,
     required this.category,
     required this.tags,
     required this.rating,
@@ -37,7 +37,47 @@ class Product {
     required this.imageUrl,
   });
 
-  // ✅ ADD THIS FACTORY CONSTRUCTOR
+  // ADDED: copyWith method to handle immutable state updates
+  Product copyWith({
+    int? id,
+    String? type,
+    String? title,
+    String? description,
+    int? price,
+    bool? isFree,
+    bool? isHardCopy,
+    String? category,
+    List<String>? tags,
+    double? rating,
+    String? author,
+    int? pages,
+    int? reviewCount,
+    String? details,
+    String? content,
+    String? pdfUrl,
+    String? imageUrl,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      isFree: isFree ?? this.isFree,
+      isHardCopy: isHardCopy ?? this.isHardCopy,
+      category: category ?? this.category,
+      tags: tags ?? this.tags,
+      rating: rating ?? this.rating,
+      author: author ?? this.author,
+      pages: pages ?? this.pages,
+      reviewCount: reviewCount ?? this.reviewCount,
+      details: details ?? this.details,
+      content: content ?? this.content,
+      pdfUrl: pdfUrl ?? this.pdfUrl,
+      imageUrl: imageUrl ?? this.imageUrl,
+    );
+  }
+
   factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
       id: map['id'] is int ? map['id'] : int.tryParse(map['id'].toString()) ?? 0,
@@ -45,9 +85,9 @@ class Product {
       title: map['title'] ?? 'Untitled',
       description: map['description'] ?? '',
       price: map['price'] is int ? map['price'] : int.tryParse(map['price'].toString()) ?? 0,
-      isFree: map['is_free'] ?? false, // Note the snake_case mapping usually used in DBs
+      isFree: map['is_free'] ?? false,
+      isHardCopy: map['is_hard_copy'] ?? false,
       category: map['category'] ?? 'General',
-      // Handle tags stored as array or null
       tags: map['tags'] != null ? List<String>.from(map['tags']) : [],
       rating: (map['rating'] is int)
           ? (map['rating'] as int).toDouble()
@@ -57,7 +97,6 @@ class Product {
       reviewCount: map['review_count'] ?? 0,
       details: map['details'] ?? '',
       content: map['content'] ?? '',
-      // Ensure this maps to your Supabase column for the PDF link
       pdfUrl: map['pdf_url'],
       imageUrl: map['cover_image_url'] ?? map['image_url'] ?? '',
     );

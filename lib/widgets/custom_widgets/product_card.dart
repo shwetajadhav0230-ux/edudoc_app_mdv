@@ -171,13 +171,14 @@ class ProductCard extends StatelessWidget {
         height: coverHeight,
         width: double.infinity,
         fit: BoxFit.cover,
+
         loadingBuilder: (ctx, child, progress) {
           if (progress == null) return child;
-          return _buildGreenPlaceholder(theme, theme.cardColor, coverHeight);
-        },
-        errorBuilder: (ctx, error, stackTrace) {
-          return _buildGreenPlaceholder(
-              theme, const Color(0xFF388E3C), coverHeight);
+          return Container(
+            height: coverHeight,
+            color: theme.cardColor,
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
         },
       );
     } else {

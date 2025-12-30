@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../services/auth_service.dart';
 import '../../state/app_state.dart';
 
 class LockUnlockScreen extends StatelessWidget {
@@ -100,9 +101,15 @@ class LockUnlockScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => appState.navigate(AppScreen.home),
+                onPressed: () async {
+                  // Trigger the REAL hardware challenge
+                  bool authenticated = await AuthService().authenticateWithBiometrics();
+                  if (authenticated) {
+                    appState.navigate(AppScreen.home);
+                  }
+                },
                 child: const Text(
-                  'Simulate Biometric Unlock',
+                  'Unlock with Biometrics', // Changed from "Simulate"
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -178,7 +185,12 @@ class LockUnlockScreen extends StatelessWidget {
                   // Biometric button
                   return IconButton(
                     icon: const Icon(Icons.fingerprint, color: Colors.grey),
-                    onPressed: () => appState.togglePinView(false),
+                    onPressed: () async {
+                      bool authenticated = await AuthService().authenticateWithBiometrics();
+                      if (authenticated) {
+                        appState.navigate(AppScreen.home);
+                      }
+                    },
                   );
                 } else if (index == 10) {
                   // 0 button
@@ -205,7 +217,7 @@ class LockUnlockScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(top: 8.0),
                 child: Text(
-                  'Incorrect PIN. Try again. (Hint: 1234)',
+                  'Incorrect PIN. Try again. ',
                   style: TextStyle(color: Colors.red),
                 ),
               ),

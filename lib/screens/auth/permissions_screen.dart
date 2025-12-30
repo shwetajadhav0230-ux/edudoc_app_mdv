@@ -1,3 +1,5 @@
+// lib/screens/auth/permissions_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
@@ -7,7 +9,8 @@ class PermissionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context, listen: false);
+    // Listen to changes so the checkmark updates automatically
+    final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -28,30 +31,39 @@ class PermissionsScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Card(
                 child: Column(
-                  children: const [
-                    PermissionTile(
+                  children: [
+                    const PermissionTile(
                       icon: Icons.folder,
                       title: 'Storage Access',
                       description: 'Save downloaded documents',
                       enabled: false,
                     ),
-                    PermissionTile(
-                      icon: Icons.notifications,
-                      title: 'Notifications',
-                      description: 'Receive updates and offers',
-                      enabled: true,
+                    // UPDATED: Interactive Notification Tile
+                    InkWell(
+                      onTap: () {
+                        // Toggle permission
+                        appState.toggleAppNotifications(!appState.areNotificationsEnabled);
+                      },
+                      child: PermissionTile(
+                        icon: Icons.notifications,
+                        title: 'Notifications',
+                        description: 'Receive updates and offers',
+                        // Bind to actual state
+                        enabled: appState.areNotificationsEnabled,
+                      ),
                     ),
-                    PermissionTile(
+                    const PermissionTile(
                       icon: Icons.camera_alt,
                       title: 'Camera Access',
                       description: 'Scan QR codes',
                       enabled: false,
                     ),
+                    // You could bind Biometrics similarly if needed
                     PermissionTile(
                       icon: Icons.fingerprint,
                       title: 'Biometric Auth',
                       description: 'Use fingerprint/face ID',
-                      enabled: true,
+                      enabled: appState.isBiometricEnabled,
                     ),
                   ],
                 ),

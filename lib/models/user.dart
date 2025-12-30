@@ -5,46 +5,41 @@ class User {
   final String fullName;
   final String email;
   final String phoneNumber;
-  final String bio;
-  final String? profileImageBase64; // Nullable if not set
+  final String? profileImageUrl;
 
   User({
     required this.id,
     required this.fullName,
     required this.email,
     required this.phoneNumber,
-    required this.bio,
-    this.profileImageBase64,
+    this.profileImageUrl,
   });
 
-  // Factory to create User from Supabase/Map data
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       id: map['id'] ?? '',
-      fullName: map['full_name'] ?? '', // Note snake_case from DB
+      // Matches 'Full_name' or 'full_name' from DB
+      fullName: map['full_name'] ?? map['Full_name'] ?? '',
       email: map['email'] ?? '',
-      phoneNumber: map['phone_number'] ?? '',
-      bio: map['bio'] ?? '',
-      profileImageBase64: map['profile_image'],
+      phoneNumber: map['phone_num'] ?? '',
+      // Matches 'profile_image_url' from DB
+      profileImageUrl: map['profile_image_url'] ?? map['avatar_url'],
     );
   }
 
-  // Helper to update specific fields (used in Edit Profile)
   User copyWith({
     String? id,
     String? fullName,
     String? email,
     String? phoneNumber,
-    String? bio,
-    String? profileImageBase64,
+    String? profileImageUrl,
   }) {
     return User(
       id: id ?? this.id,
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
-      bio: bio ?? this.bio,
-      profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
     );
   }
 }

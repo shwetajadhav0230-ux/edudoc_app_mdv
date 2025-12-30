@@ -1,26 +1,10 @@
+// lib/screens/search/search_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import '../../data/mock_data.dart'; // REMOVED
 import '../../models/offer.dart';
 import '../../models/product.dart';
 import '../../state/app_state.dart';
-
-// ... [Keep _SearchableAppRoute class unchanged] ...
-class _SearchableAppRoute {
-  final String title;
-  final String description;
-  final List<String> keywords;
-  final IconData icon;
-  final AppScreen destination;
-
-  _SearchableAppRoute({
-    required this.title,
-    required this.description,
-    required this.keywords,
-    required this.icon,
-    required this.destination,
-  });
-}
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -34,11 +18,14 @@ class _SearchScreenState extends State<SearchScreen> {
   String _selectedCategory = 'All';
   late final TextEditingController _searchController;
 
-  // ... [Keep _searchableRoutes unchanged] ...
-  final List<_SearchableAppRoute> _searchableRoutes = [
-    _SearchableAppRoute(title: 'Token Wallet', description: 'View balance', keywords: ['token', 'wallet'], icon: Icons.monetization_on, destination: AppScreen.wallet),
-    _SearchableAppRoute(title: 'My Library', description: 'Access purchased docs', keywords: ['library', 'owned'], icon: Icons.library_books, destination: AppScreen.library),
-    _SearchableAppRoute(title: 'App Settings', description: 'Theme & Security', keywords: ['settings', 'theme'], icon: Icons.settings, destination: AppScreen.settings),
+  final List<Map<String, dynamic>> _appShortcuts = [
+    {'title': 'Wallet & Tokens', 'icon': Icons.account_balance_wallet, 'screen': AppScreen.wallet},
+    {'title': 'My Library', 'icon': Icons.library_books, 'screen': AppScreen.library},
+    {'title': 'App Settings', 'icon': Icons.settings, 'screen': AppScreen.settings},
+    {'title': 'Profile Settings', 'icon': Icons.person, 'screen': AppScreen.profileEdit},
+    {'title': 'Cart / Checkout', 'icon': Icons.shopping_cart, 'screen': AppScreen.cart},
+    {'title': 'Help & Support', 'icon': Icons.help_outline, 'screen': AppScreen.helpSupport},
+    {'title': 'About EduDoc', 'icon': Icons.info_outline, 'screen': AppScreen.about},
   ];
 
   @override
@@ -46,6 +33,9 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _searchController = TextEditingController();
     _searchController.addListener(_onSearchChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppState>(context, listen: false).loadSearchHistory();
+    });
   }
 
   @override
@@ -56,15 +46,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _searchQuery = _searchController.text.toLowerCase();
-    });
-  }
-
-  void _selectCategory(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
+    setState(() => _searchQuery = _searchController.text.toLowerCase());
   }
 
   void _clearSearch() {
@@ -74,138 +56,136 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Helper methods (omitted for brevity, but they remain the same)
-  Widget _buildProductTile(Product p, AppState appState, ThemeData theme) {
-    return Card(
-      child: ListTile(
-        title: Text(p.title), subtitle: Text(p.author),
-        trailing: Text(p.isFree ? 'FREE' : '${p.price} T.'),
-        onTap: () => appState.navigate(AppScreen.productDetails, id: p.id.toString()),
-      ),
-    );
-  }
-
-  Widget _buildOfferTile(Offer o, AppState appState, ThemeData theme) {
-    return Card(
-      child: ListTile(
-        title: Text(o.title), subtitle: Text('Bundle: ${o.discount} Off'),
-        onTap: () => appState.navigate(AppScreen.offerDetails, id: o.id.toString()),
-      ),
-    );
-  }
-
-  Widget _buildAppRouteTile(_SearchableAppRoute r, AppState appState, ThemeData theme) {
-    return Card(child: ListTile(title: Text(r.title), leading: Icon(r.icon), onTap: () => appState.navigate(r.destination)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final theme = Theme.of(context);
 
-    // --- 1. Filtering Logic (Products) ---
-    // USE appState.products
+    final filteredShortcuts = _appShortcuts.where((s) {
+      if (_searchQuery.isEmpty) return false;
+      return s['title'].toLowerCase().contains(_searchQuery);
+    }).toList();
+
     final filteredProducts = appState.products.where((p) {
       if (_searchQuery.isEmpty) return false;
-      final matchesQuery =
-          p.title.toLowerCase().contains(_searchQuery) ||
-              p.author.toLowerCase().contains(_searchQuery) ||
-              p.tags.any((tag) => tag.toLowerCase().contains(_searchQuery));
-
-      final matchesCategory =
-          _selectedCategory == 'All' ||
-              p.category == _selectedCategory ||
-              (_selectedCategory == 'Free' && p.isFree) ||
-              (_selectedCategory == 'Premium' && p.price > 0);
-
+      final matchesQuery = p.title.toLowerCase().contains(_searchQuery) ||
+          p.author.toLowerCase().contains(_searchQuery);
+      final matchesCategory = _selectedCategory == 'All' || p.category == _selectedCategory;
       return matchesQuery && matchesCategory;
     }).toList();
 
-    // --- 2. Filtering Logic (Offers) ---
-    // USE appState.offers
     final filteredOffers = appState.offers.where((o) {
       if (_searchQuery.isEmpty) return false;
-      final matchesQuery = o.title.toLowerCase().contains(_searchQuery);
-      return matchesQuery;
+      return o.title.toLowerCase().contains(_searchQuery);
     }).toList();
 
-    // --- 3. Filtering App Routes ---
-    List<_SearchableAppRoute> filteredAppRoutes = [];
-    if (_searchQuery.isNotEmpty) {
-      filteredAppRoutes = _searchableRoutes.where((route) {
-        final matchesQuery =
-            route.title.toLowerCase().contains(_searchQuery) ||
-                route.keywords.any((k) => k.toLowerCase().contains(_searchQuery));
-        return matchesQuery;
-      }).toList();
-    }
+    final bool hasResults = filteredShortcuts.isNotEmpty || filteredProducts.isNotEmpty || filteredOffers.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => appState.navigateBack()),
-        title: Text('Universal Search', style: theme.textTheme.titleLarge),
+        title: const Text('Universal Search'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextFormField(
               controller: _searchController,
-              autofocus: true,
               decoration: InputDecoration(
-                labelText: 'Search products, settings, authors...',
+                hintText: 'Search across EduDoc...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, color: Colors.grey), onPressed: _clearSearch) : null,
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(icon: const Icon(Icons.clear), onPressed: _clearSearch)
+                    : null,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 24),
-            Text('Filters', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Wrap(
-                spacing: 8.0,
-                children: ['All', 'Tech', 'Math', 'History', 'Free', 'Premium'].map((label) => ChoiceChip(
-                  label: Text(label),
-                  selected: _selectedCategory == label,
-                  onSelected: (_) => _selectCategory(label),
-                )).toList(),
-              ),
-            ),
-            const SizedBox(height: 24),
+
             if (_searchQuery.isEmpty)
-              const Center(child: Text('Search for products or bundles...'))
-            else if (filteredProducts.isEmpty && filteredOffers.isEmpty && filteredAppRoutes.isEmpty)
-              const Center(child: Text('No items found matching your criteria.'))
+              _buildInitialState(appState, theme)
+            else if (!hasResults)
+              _buildNoResultsState(theme)
             else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (filteredAppRoutes.isNotEmpty) ...[
-                    Text('App Navigation', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
-                    const SizedBox(height: 8),
-                    ...filteredAppRoutes.map((r) => _buildAppRouteTile(r, appState, theme)),
-                  ],
-                  if (filteredProducts.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text('Products (${filteredProducts.length})', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
-                    const SizedBox(height: 8),
-                    ...filteredProducts.map((p) => _buildProductTile(p, appState, theme)),
-                  ],
-                  if (filteredOffers.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text('Offers (${filteredOffers.length})', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
-                    const SizedBox(height: 8),
-                    ...filteredOffers.map((o) => _buildOfferTile(o, appState, theme)),
-                  ],
-                ],
-              ),
+              _buildResultsList(filteredShortcuts, filteredProducts, filteredOffers, appState, theme),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInitialState(AppState appState, ThemeData theme) {
+    return Column(
+      children: [
+        if (appState.searchHistory.isNotEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Recent Searches', style: theme.textTheme.titleMedium),
+              TextButton(onPressed: () => appState.clearSearchHistory(), child: const Text('Clear')),
+            ],
+          ),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 4.0,
+            children: appState.searchHistory.map((query) => InputChip( // ADDED: Changed to InputChip
+              label: Text(query),
+              onPressed: () {
+                _searchController.text = query;
+                _onSearchChanged();
+              },
+              // ADDED: Specific deletion logic for this query
+              onDeleted: () => appState.removeFromSearchHistory(query),
+              deleteIcon: const Icon(Icons.cancel, size: 16),
+            )).toList(),
+          ),
+        ],
+        const Padding(
+          padding: EdgeInsets.only(top: 60),
+          child: Opacity(opacity: 0.5, child: Text('Find documents, settings, or help items.')),
+        )
+      ],
+    );
+  }
+
+  Widget _buildNoResultsState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 80),
+        child: Column(
+          children: [
+            Icon(Icons.search_off, size: 64, color: theme.colorScheme.onSurface.withOpacity(0.2)),
+            const SizedBox(height: 16),
+            const Text('No matches found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('Try adjusting your search or filters.', textAlign: TextAlign.center),
+            TextButton(onPressed: _clearSearch, child: const Text('Clear Search')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsList(List shortcuts, List products, List offers, AppState appState, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (shortcuts.isNotEmpty) ...[
+          const Text('Quick Actions', style: TextStyle(fontWeight: FontWeight.bold)),
+          ...shortcuts.map((s) => ListTile(
+              leading: Icon(s['icon']), title: Text(s['title']),
+              onTap: () => appState.navigate(s['screen']))),
+        ],
+        if (products.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Documents (${products.length})', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ...products.map((p) => ListTile(
+              title: Text(p.title), subtitle: Text(p.author),
+              onTap: () => appState.navigate(AppScreen.productDetails, id: p.id.toString()))),
+        ],
+      ],
     );
   }
 }

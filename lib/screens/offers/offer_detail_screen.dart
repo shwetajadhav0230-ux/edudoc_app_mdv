@@ -1,122 +1,126 @@
+// lib/screens/offers/offer_detail_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import '../../data/mock_data.dart'; // REMOVED
 import '../../state/app_state.dart';
-import '../../widgets/custom_widgets/summary_row.dart';
+import '../../models/offer.dart';
+import '../../models/product.dart'; // ✅ Added import for Product
 
 class OfferDetailsScreen extends StatelessWidget {
   const OfferDetailsScreen({super.key});
 
-  void _handleBuyBundle(BuildContext context, AppState appState, dynamic offer) {
-    appState.addBundleToCart(offer);
-    appState.navigate(AppScreen.cart);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${offer.title} added to cart!'), duration: const Duration(seconds: 1)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    final theme = Theme.of(context);
     final offerId = int.tryParse(appState.selectedOfferId ?? '') ?? 0;
 
-    // Fetch from appState.offers
-    if (appState.offers.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    final offer = appState.offers.firstWhere(
+    // Find offer safely
+    final Offer offer = appState.offers.firstWhere(
           (o) => o.id == offerId,
-      orElse: () => appState.offers.first,
+      // ✅ FIXED: Added 'duration' and matches new Offer fields
+      orElse: () => Offer(
+          id: 0,
+          title: 'Offer Not Found',
+          description: '',
+          discount: '',
+          duration: '',     // ✅ Added missing parameter
+          tokenPrice: 0,
+          productIds: [],
+          status: 'Inactive',
+          imageUrl: ''
+      ),
     );
 
-    final Color backupColor = const Color(0xFF14B8A6);
-
-    // Fetch bundled products from appState.products
-    final bundledProducts = offer.productIds.map((id) =>
-        appState.products.firstWhere(
-                (p) => p.id == id,
-            orElse: () => appState.products.first // Fallback
-        )
-    ).toList();
-
-    final originalPrice = bundledProducts.fold(0, (sum, p) => sum + p.price);
-    final priceDisplay = offer.tokenPrice == 0 ? 'FREE' : '${offer.tokenPrice} Tokens';
-    final bool isActive = offer.status == 'Active';
-    final Color flagColor = isActive ? Colors.green.shade600 : Colors.red.shade600;
-    final String flagText = isActive ? 'Available' : offer.status;
-    final IconData flagIcon = isActive ? Icons.check_circle : Icons.cancel;
+    if (offer.id == 0) {
+      return Scaffold(
+        appBar: AppBar(leading: BackButton(onPressed: appState.navigateBack)),
+        body: const Center(child: Text("Offer not found.")),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => appState.navigateBack()),
-        title: Text(offer.title, style: theme.textTheme.titleLarge),
-        elevation: 0,
+        title: Text(offer.title),
+        leading: BackButton(onPressed: appState.navigateBack),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Bundle Summary', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
-                    const SizedBox(height: 8),
-                    Chip(
-                      label: Text(flagText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      backgroundColor: flagColor,
-                      avatar: Icon(flagIcon, color: Colors.white, size: 18),
-                    ),
-                    const Divider(),
-                    Text('Description', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text('This is a limited-time bundle offering significant savings.', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
-                    const SizedBox(height: 16),
-                    Text('Pricing', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    SummaryRow(label: 'Total Value', value: '$originalPrice T'),
-                    SummaryRow(label: 'Discount', value: offer.discount),
-                    SummaryRow(label: 'Duration', value: offer.duration),
-                    const Divider(),
-                    SummaryRow(label: 'Bundle Price', value: priceDisplay, isTotal: true),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isActive ? () => _handleBuyBundle(context, appState, offer) : null,
-                        style: ElevatedButton.styleFrom(backgroundColor: offer.tokenPrice == 0 ? backupColor : theme.colorScheme.primary),
-                        child: Text(offer.tokenPrice == 0 ? 'Claim Free Bundle' : 'Buy Bundle Now', style: const TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                  ],
+            // Offer Image
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(16),
+                image: DecorationImage(
+                  image: AssetImage('assets/images/${offer.imageUrl}'),
+                  fit: BoxFit.cover,
+                  onError: (_, __) {},
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Included Documents (${bundledProducts.length})', style: theme.textTheme.titleLarge?.copyWith(fontSize: 20)),
-                    const Divider(),
-                    ...bundledProducts.map(
-                          (p) => ListTile(
-                        onTap: () => appState.navigate(AppScreen.productDetails, id: p.id.toString()),
-                        dense: true,
-                        title: Text(p.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        trailing: Text('${p.price} T.', style: TextStyle(color: theme.colorScheme.tertiary)),
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 24),
+
+            // Title & Price
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(offer.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(20)),
+                  child: Text(
+                    '${offer.tokenPrice} Tokens',
+                    style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(offer.description, style: const TextStyle(fontSize: 16, height: 1.5)),
+            const SizedBox(height: 30),
+
+            // Included Items
+            const Text("Included Documents:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            ...offer.productIds.map((pid) {
+              final product = appState.products.firstWhere(
+                      (p) => p.id == pid,
+                  orElse: () => Product(id: 0, title: 'Unknown Product', type: '', description: '', price: 0, isFree: false, category: '', tags: [], rating: 0, author: '', pages: 0, reviewCount: 0, details: '', content: '', imageUrl: '')
+              );
+              if (product.id == 0) return const SizedBox.shrink();
+
+              return ListTile(
+                leading: const Icon(Icons.description, color: Colors.blueAccent),
+                title: Text(product.title),
+                subtitle: Text(product.author),
+                trailing: const Icon(Icons.check_circle, color: Colors.green, size: 16),
+              );
+            }),
+
+            const SizedBox(height: 40),
+
+            // Action Button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Placeholder for future bundle logic
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Bundle purchasing coming soon!')),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey, // Disabled look for now
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Purchase Bundle (Coming Soon)', style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ],

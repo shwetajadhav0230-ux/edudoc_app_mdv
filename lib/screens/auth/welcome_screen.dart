@@ -37,10 +37,10 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Your all-in-one platform for sharing and discovering educational documents.',
+                ' Platform for Sharing and Discovering Documents.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: const Color(0xFF009688),
                 ),
               ),
               const Spacer(flex: 3),

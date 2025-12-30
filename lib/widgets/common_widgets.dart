@@ -1,5 +1,5 @@
 // lib/widgets/common_widgets.dart
-import '../screens/auth/verify_email_screen.dart'; // <--- Add this
+import '../screens/auth/verify_email_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -22,6 +22,7 @@ import '../screens/profile/activity_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/email_management_screen.dart';
 import '../screens/profile/profile_edit_screen.dart';
+import '../screens/profile/profile_setup_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/settings_screen.dart';
 import '../screens/search/search_screen.dart';
@@ -54,6 +55,7 @@ class MainAppScaffold extends StatelessWidget {
 
     // Define screens that should NOT have the main AppBar
     final List<AppScreen> screensWithoutMainAppBar = [
+      AppScreen.splash, // ✅ Add Splash here
       AppScreen.library,
       AppScreen.bookmarks,
       AppScreen.cart,
@@ -70,6 +72,7 @@ class MainAppScaffold extends StatelessWidget {
       AppScreen.about,
       AppScreen.helpSupport,
       AppScreen.profileEdit,
+      AppScreen.profileSetup,
     ];
 
     final bool shouldShowMainAppBar = !screensWithoutMainAppBar.contains(
@@ -142,6 +145,7 @@ class MainAppScaffold extends StatelessWidget {
             case AppScreen.userActivity:
             case AppScreen.settings:
             case AppScreen.profileEdit:
+            case AppScreen.profileSetup:
               currentIndex = 3;
               break;
             default:
@@ -203,6 +207,17 @@ class MainScreenRouter extends StatelessWidget {
     bool showScaffold = true;
 
     switch (appState.currentScreen) {
+    // ✅ ADDED: Splash Screen Case
+    // This is displayed while AppState checks for a session.
+      case AppScreen.splash:
+        currentView = const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+        showScaffold = false;
+        break;
+
       case AppScreen.welcome:
         currentView = const WelcomeScreen();
         showScaffold = false;
@@ -229,6 +244,10 @@ class MainScreenRouter extends StatelessWidget {
         break;
       case AppScreen.profileEdit:
         currentView = const ProfileEditScreen();
+        showScaffold = false;
+        break;
+      case AppScreen.profileSetup:
+        currentView = const ProfileSetupScreen();
         showScaffold = false;
         break;
 
