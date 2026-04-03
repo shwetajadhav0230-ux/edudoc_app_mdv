@@ -1,21 +1,56 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'state/app_state.dart';
-import 'widgets/common_widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+
+// Config & State
+import 'state/app_state.dart';
 import 'utils/config.dart';
+import 'services/notification_service.dart';
+import 'widgets/custom_widgets/bottom_nav.dart';
+
+// Screens
+import 'screens/auth/lock_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/permissions_screen.dart';
+import 'screens/auth/signup_screen.dart';
+import 'screens/auth/verify_email_screen.dart';
+import 'screens/auth/welcome_screen.dart';
+import 'screens/cart/cart_screen.dart';
+import 'screens/common/about_screen.dart';
+import 'screens/common/help_support_screen.dart';
+import 'screens/home/home_screen.dart';
+import 'screens/library/bookmarks_screen.dart';
+import 'screens/library/library_screen.dart';
+import 'screens/offers/offer_detail_screen.dart';
+import 'screens/offers/offers_screen.dart';
+import 'screens/product/product_detail_screen.dart';
+import 'screens/profile/change_password_screen.dart';
+import 'screens/profile/email_management_screen.dart';
+import 'screens/profile/profile_edit_screen.dart';
+import 'screens/profile/profile_screen.dart';
+import 'screens/profile/profile_setup_screen.dart';
+import 'screens/profile/settings_screen.dart';
+import 'screens/profile/user_activity_screen.dart';
+import 'screens/search/search_screen.dart';
+import 'screens/wallet/wallet_screen.dart';
 
 void main() async {
-  // Ensure Flutter bindings are initialized for Supabase and Secure Storage
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Supabase
   await Supabase.initialize(
     url: SUPABASE_URL,
     anonKey: SUPABASE_ANON_KEY,
   );
+
+  try {
+    await FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+  } catch (e) {
+    debugPrint("Failed to clear secure flags: $e");
+  }
+
+  await NotificationService().init();
 
   runApp(
     ChangeNotifierProvider(
@@ -32,26 +67,22 @@ class EduDocApp extends StatefulWidget {
   State<EduDocApp> createState() => _EduDocAppState();
 }
 
-// Added WidgetsBindingObserver to handle Auto-Lock Timer logic
 class _EduDocAppState extends State<EduDocApp> with WidgetsBindingObserver {
 
   @override
   void initState() {
     super.initState();
-    // Register the observer to track when the app goes to background/foreground
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    // Unregister observer to prevent memory leaks
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pass the lifecycle state change to AppState to manage the Auto-Lock timer
     Provider.of<AppState>(context, listen: false).handleAppLifecycleState(state);
   }
 
@@ -59,82 +90,76 @@ class _EduDocAppState extends State<EduDocApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
 
-    // --- Theme Configuration (Mimicking CSS Variables) ---
-    const primaryColor = Color(0xFF6366F1); // Indigo 500
-    const secondaryColor = Color(0xFFF472B6); // Pink 400
-    const tertiaryColor = Color(0xFFFBBF24); // Amber 400
-    const backupColor = Color(0xFF14B8A6); // Teal 500
-
-    // --- Dark Theme Definition ---
-    final ThemeData darkTheme = ThemeData(
-      brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: primaryColor,
-        secondary: secondaryColor,
-        tertiary: tertiaryColor,
-        surface: Color(0xFF1E293B),
-      ),
-      scaffoldBackgroundColor: const Color(0xFF0F172A),
-      cardColor: const Color(0xFF1E293B),
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700),
-        titleLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700),
-        bodyMedium: TextStyle(fontFamily: 'Inter'),
-      ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: const Color(0xFF0F172A),
-        selectedItemColor: primaryColor,
-        unselectedItemColor: Colors.grey.shade600,
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: true,
-      ),
-      useMaterial3: true,
-    );
-
-    // --- Light Theme Definition ---
-    const Color lightPrimary = Color(0xFF4F46E5);
-    const Color lightSecondary = Color(0xFF0D9488);
-    const Color lightTertiary = Color(0xFFF59E0B);
-    const Color lightBackground = Color(0xFFF1F5F9);
-    const Color lightSurface = Color(0xFFFFFFFF);
-    const Color lightTextMain = Color(0xFF1E293B);
-    const Color lightTextSubtle = Color(0xFF64748B);
-
+    // --- Theme Config ---
     final ThemeData lightTheme = ThemeData(
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
-        primary: lightPrimary,
-        secondary: lightSecondary,
-        tertiary: lightTertiary,
-        surface: lightSurface,
-        onSurface: lightTextMain,
-        onSurfaceVariant: lightTextSubtle,
+        primary: Color(0xFF4F46E5),
+        secondary: Color(0xFF0D9488),
+        tertiary: Color(0xFFF59E0B),
+        surface: Color(0xFFFFFFFF),
       ),
-      scaffoldBackgroundColor: lightBackground,
-      cardColor: lightSurface,
-      textTheme: TextTheme(
-        headlineSmall: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700, color: lightTextMain),
-        titleLarge: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w700, color: lightTextMain),
-        bodyMedium: const TextStyle(fontFamily: 'Inter', color: lightTextMain),
-        bodySmall: TextStyle(fontFamily: 'Inter', color: lightTextSubtle),
-        labelLarge: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
+      scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+      useMaterial3: true,
+    );
+
+    final ThemeData darkTheme = ThemeData(
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF6366F1),
+        secondary: Color(0xFFF472B6),
+        tertiary: Color(0xFFFBBF24),
+        surface: Color(0xFF1E293B),
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: lightSurface,
-        selectedItemColor: lightPrimary,
-        unselectedItemColor: lightTextSubtle,
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: true,
-      ),
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
       useMaterial3: true,
     );
 
     return MaterialApp(
-      title: 'EduDoc Flutter SPA',
+      title: 'EduDoc',
       debugShowCheckedModeBanner: false,
       theme: appState.isDarkTheme ? darkTheme : lightTheme,
-      // MainScreenRouter handles the internal routing based on appState.currentScreen
-      home: const MainScreenRouter(backupColor: backupColor),
+      home: _getScreen(appState.currentScreen),
     );
+  }
+
+  Widget _getScreen(AppScreen screen) {
+    switch (screen) {
+      case AppScreen.splash:
+      case AppScreen.welcome: return const WelcomeScreen();
+      case AppScreen.login: return const LoginScreen();
+    // ✅ Restored YOUR exact class name
+      case AppScreen.signup: return const SignUpScreen();
+      case AppScreen.verifyEmail: return const VerifyEmailScreen();
+      case AppScreen.permissions: return const PermissionsScreen();
+    // ✅ Restored YOUR exact class name
+      case AppScreen.lockUnlock: return const LockUnlockScreen();
+
+    // Tab Screens
+      case AppScreen.home: return const BottomNav(initialIndex: 0, child: HomeScreen());
+      case AppScreen.search: return const BottomNav(initialIndex: 1, child: SearchScreen());
+      case AppScreen.library: return const BottomNav(initialIndex: 2, child: LibraryScreen());
+      case AppScreen.profile: return const BottomNav(initialIndex: 3, child: ProfileScreen());
+
+    // Other Screens
+    // ✅ Restored YOUR exact class name
+      case AppScreen.productDetails: return const ProductDetailsScreen();
+      case AppScreen.cart: return const CartScreen();
+      case AppScreen.wallet: return const WalletScreen();
+      case AppScreen.settings: return const SettingsScreen();
+      case AppScreen.bookmarks: return const BookmarksScreen();
+      case AppScreen.offers: return const OffersScreen();
+    // ✅ Restored YOUR exact class name
+      case AppScreen.offerDetails: return const OfferDetailsScreen();
+      case AppScreen.userActivity: return const UserActivityScreen();
+      case AppScreen.profileEdit: return const ProfileEditScreen();
+      case AppScreen.profileSetup: return const ProfileSetupScreen();
+      case AppScreen.emailManagement: return const EmailManagementScreen();
+      case AppScreen.changePassword: return const ChangePasswordScreen();
+      case AppScreen.about: return const AboutScreen();
+      case AppScreen.helpSupport: return const HelpSupportScreen();
+
+      default: return const WelcomeScreen();
+    }
   }
 }

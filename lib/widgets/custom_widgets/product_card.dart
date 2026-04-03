@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/product.dart';
 import '../../state/app_state.dart';
+import '../../screens/product/reading_screen.dart'; // ✅ Import Reader
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -13,11 +14,9 @@ class ProductCard extends StatelessWidget {
 
   const ProductCard({super.key, required this.product, this.onTap});
 
-  // Base padding
   final EdgeInsets _contentPadding =
   const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0);
 
-  // Map for displaying custom category labels
   final Map<String, String> _typeLabelMap = const {
     'E-Books': 'E-Books',
     'E-Journals': 'E-Journals',
@@ -29,13 +28,12 @@ class ProductCard extends StatelessWidget {
     final theme = Theme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
 
-    // 1. Define the Gradient (Always applied)
     const gradient = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        Color(0xFF4C4268), // Lighter/Vibrant Purple (Top Left)
-        Color(0xFF282436), // Darker Base Color (Bottom Right)
+        Color(0xFF4C4268),
+        Color(0xFF282436),
       ],
     );
 
@@ -75,7 +73,7 @@ class ProductCard extends StatelessWidget {
   }
 
   // ------------------------------------------------------------------
-  // RESPONSIVE VERTICAL LAYOUT
+  // LAYOUT & BUILDERS
   // ------------------------------------------------------------------
 
   Widget _buildResponsiveVerticalLayout(
@@ -100,11 +98,7 @@ class ProductCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildCoverImageWithOverlay(
-            theme,
-            context,
-            coverHeight: coverHeight,
-          ),
+          _buildCoverImageWithOverlay(theme, context, coverHeight: coverHeight),
           Padding(
             padding: padding,
             child: Column(
@@ -125,11 +119,7 @@ class ProductCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildCoverImageWithOverlay(
-          theme,
-          context,
-          coverHeight: coverHeight,
-        ),
+        _buildCoverImageWithOverlay(theme, context, coverHeight: coverHeight),
         Expanded(
           child: Padding(
             padding: padding,
@@ -155,10 +145,6 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------------
-  // --- SHARED BUILDER METHODS ---
-  // ------------------------------------------------------------------
-
   Widget _buildCoverImageWithOverlay(
       ThemeData theme,
       BuildContext context, {
@@ -171,15 +157,17 @@ class ProductCard extends StatelessWidget {
         height: coverHeight,
         width: double.infinity,
         fit: BoxFit.cover,
-
         loadingBuilder: (ctx, child, progress) {
           if (progress == null) return child;
           return Container(
             height: coverHeight,
             color: theme.cardColor,
-            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            child:
+            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
           );
         },
+        errorBuilder: (context, error, stackTrace) =>
+            _buildGreenPlaceholder(theme, const Color(0xFF388E3C), coverHeight),
       );
     } else {
       baseImage =
@@ -195,15 +183,6 @@ class ProductCard extends StatelessWidget {
           top: 10,
           right: 10,
           child: _buildBookmarkIcon(theme, context),
-        ),
-        const Positioned.fill(
-          child: Center(
-            child: Icon(
-              Icons.play_circle_fill_rounded,
-              color: Colors.white,
-              size: 30,
-            ),
-          ),
         ),
       ],
     );
@@ -326,7 +305,9 @@ class ProductCard extends StatelessWidget {
 
   Widget _buildDescription(ThemeData theme, {int maxLines = 2}) {
     return AutoSizeText(
-      'An in-depth visual guide to the key events and\nbattles of the Second World War.',
+      product.description.isNotEmpty
+          ? product.description
+          : 'An in-depth visual guide to the key events and battles.',
       maxLines: maxLines,
       minFontSize: 10,
       overflow: TextOverflow.ellipsis,
@@ -337,26 +318,85 @@ class ProductCard extends StatelessWidget {
     );
   }
 
+  // ✅ UPDATED ACTION ROW
   Widget _buildBottomActionRow(ThemeData theme, BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _buildPriceInfo(theme),
-          ),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final isOwned = appState.ownedProductIds.contains(product.id);
+
+        // 1. OWNED STATE: Show "Read" Button (Primary) + Download (Secondary)
+        if (isOwned) {
+          return Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    icon: const Icon(Icons.menu_book, size: 18),
+                    label: const Text(
+                      "READ",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    onPressed: () {
+                      // Navigate to Reader (Silent open)
+                      appState.setSelectedProduct(product.id.toString());
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ReadingScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Download Button (For Offline Access)
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade800,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                  tooltip: "Download for Offline",
+                  onPressed: () {
+                    // Triggers download with notification
+                    appState.downloadForOffline(product);
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+
+        // 2. NOT OWNED STATE: Show Price + Cart + Buy
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // UPDATED: Now uses Consumer to update state
-            _buildCartButton(theme, context),
-            const SizedBox(width: 10),
-            _buildBuyButton(theme, context),
+            Expanded(
+              child: _buildPriceInfo(theme),
+            ),
+            Row(
+              children: [
+                _buildCartButton(theme, context, appState),
+                const SizedBox(width: 10),
+                _buildBuyButton(theme, context, appState),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -400,61 +440,50 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // UPDATED CART BUTTON WITH STATE HANDLING
-  Widget _buildCartButton(ThemeData theme, BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        // Check if item is in cart.
-        // NOTE: If 'cartItems' is not the exact variable name in your AppState,
-        // please update it (e.g., to 'itemsInCart' or 'cartProductIds').
-        // I am assuming cartItems contains Product objects or objects with an 'id'.
-        final isInCart = appState.cartItems.any((item) => item.id == product.id);
+  // UPDATED: Toggles Cart Status
+  Widget _buildCartButton(ThemeData theme, BuildContext context, AppState appState) {
+    final isInCart = appState.cartItems.any((item) => item.id == product.id);
 
-        return Container(
-          width: 35,
-          height: 35,
-          decoration: BoxDecoration(
-            // Change color to Green/Secondary if in cart
-            color: isInCart ? Colors.green : const Color(0xFF4C4268),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              if (isInCart) {
-                // If already in cart, just show a message (or you could remove it)
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${product.title} is already in your cart!'),
-                    duration: const Duration(milliseconds: 1000),
-                  ),
-                );
-              } else {
-                // Add to cart
-                appState.addToCart(product);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${product.title} added to cart!'),
-                    duration: const Duration(milliseconds: 1500),
-                  ),
-                );
-              }
-            },
-            child: Icon(
-              // Change icon to Check if in cart
-              isInCart ? Icons.check : Icons.shopping_cart_outlined,
-              color: Colors.white.withOpacity(0.9),
-              size: 20,
-            ),
-          ),
-        );
-      },
+    return Container(
+      width: 35,
+      height: 35,
+      decoration: BoxDecoration(
+        color: isInCart ? Colors.green : const Color(0xFF4C4268),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          if (isInCart) {
+            // Remove from cart
+            appState.removeCartItem(product.id);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${product.title} removed from cart.'),
+                duration: const Duration(milliseconds: 1000),
+              ),
+            );
+          } else {
+            // Add to cart
+            appState.addToCart(product);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${product.title} added to cart!'),
+                duration: const Duration(milliseconds: 1500),
+              ),
+            );
+          }
+        },
+        child: Icon(
+          isInCart ? Icons.check : Icons.shopping_cart_outlined,
+          color: Colors.white.withOpacity(0.9),
+          size: 20,
+        ),
+      ),
     );
   }
 
-  Widget _buildBuyButton(ThemeData theme, BuildContext context) {
-    final appState = Provider.of<AppState>(context, listen: false);
-
+  Widget _buildBuyButton(ThemeData theme, BuildContext context, AppState appState) {
     return Container(
       width: 35,
       height: 35,

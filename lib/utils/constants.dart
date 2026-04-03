@@ -1,16 +1,36 @@
-
 // lib/utils/constants.dart
 
 class AppConstants {
-  // TODO: Replace with your Razorpay Key ID
   static const String razorpayKey = 'rzp_test_BrZoJm8FvGfLhd';
-
-  // Pricing: how many paise (1 INR = 100 paise) per token.
-  // TODO: Set this according to your pricing model.
-  static const int paisePerToken = 100; // e.g., 1 token = ₹1.00
-
+  static const int paisePerToken = 100;
   static const String merchantName = 'EduDoc';
-
-  // Hex color used in Razorpay checkout (must be a string like '#3399cc')
   static const String themeColorHex = '#6366F1';
+}
+
+class AppActions {
+  // Token & Purchase
+  static const String tokensPurchased = 'TOKENS_PURCHASED';
+  static const String cartPurchased = 'CART_PURCHASED';
+  static const String bundlePurchased = 'BUNDLE_PURCHASED';
+  static const String offers = 'offers';
+  // Products
+  static const String bookDownloaded = 'BOOK_DOWNLOADED';
+  static const String bookNotDownloaded = 'BOOK_DOWNLOAD_FAILED';
+  static const String addedToCart = 'ADDED_TO_CART';
+  static const String removedFromCart = 'REMOVED_FROM_CART';
+  static const String addedToWishlist = 'ADDED_TO_WISHLIST';
+  static const String addedReview = 'ADDED_REVIEW';
+
+  // User
+  static const String userCreated = 'USER_CREATED';
+  static const String profileUpdated = 'PROFILE_UPDATED';
+}
+
+class EntityTypes {
+  static const String products = 'products';
+  static const String tokens = 'tokens';
+  static const String offers = 'offers';
+  static const String reviews = 'reviews';
+  static const String users = 'users';
+  static const String bookDownloaded = 'BOOK_DOWNLOADED';
 }

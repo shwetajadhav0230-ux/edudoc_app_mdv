@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import 'downloads_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -80,6 +81,17 @@ class ProfileScreen extends StatelessWidget {
                     title: const Text('My Activity & Purchases'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => appState.navigate(AppScreen.userActivity),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.download_done_rounded, color: Colors.indigo),
+                    title: const Text('Offline Library'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DownloadsScreen())
+                      );
+                    },
                   ),
                 ],
               ),

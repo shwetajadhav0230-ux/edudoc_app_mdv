@@ -1,14 +1,18 @@
 // lib/state/app_state.dart
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:local_auth/local_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // Services
+import '../models/review.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
 import '../services/file_service.dart';
@@ -82,6 +86,8 @@ class AppState extends ChangeNotifier {
   bool _areNotificationsEnabled = true;
   bool _isPromoEmailEnabled = false;
   bool _hasSkippedSetup = false;
+  bool _isAppLockEnabled = false;
+
 
   // --- Reader Settings ---
   String _readerPageFlipping = 'Horizontal';
@@ -121,11 +127,17 @@ class AppState extends ChangeNotifier {
   bool get isProfileIncomplete => _currentUser.phoneNumber.isEmpty;
   int get autoLockSeconds => _autoLockSeconds;
   String get selectedCategory => _selectedCategory;
+  // Offline access
+  bool get isOffline => _offlineProducts.isNotEmpty;
+  List<Product> _offlineProducts = [];
+  List<Product> get offlineProducts => _offlineProducts;
 
-  // ✅ RESTORED: Needed by SettingsScreen
+
+  // Biometrics
   Future<List<BiometricType>> get enrolledBiometrics => _authService.getAvailableBiometrics();
 
   bool get isBiometricEnabled => _isBiometricEnabled;
+  bool get isAppLockEnabled => _isAppLockEnabled;
   List<Product> get products => _products;
   List<Offer> get offers => _offers;
   bool get isLoadingProducts => _isLoadingProducts;
@@ -179,6 +191,10 @@ class AppState extends ChangeNotifier {
   AppState() {
     _initApp();
   }
+  void setSelectedProduct(String id) {
+    _selectedProductId = id;
+    notifyListeners();
+  }
 
   @override
   void dispose() {
@@ -229,7 +245,7 @@ class AppState extends ChangeNotifier {
   // RESTORED HELPERS (Fixing Undefined Methods)
   // -------------------------------------------------------------------------
 
-  // ✅ RESTORED: Needed by LibraryScreen
+  // refresh
   Future<void> refreshData() async {
     notifyListeners();
     await Future.wait([fetchProducts(), fetchOffers()]);
@@ -273,6 +289,8 @@ class AppState extends ChangeNotifier {
   // AUTH LOGIC
   // -------------------------------------------------------------------------
 
+  // lib/state/app_state.dart
+
   Future<void> _handleAutoLogin() async {
     try {
       final userProfile = await _authService.fetchUserProfile();
@@ -281,9 +299,17 @@ class AppState extends ChangeNotifier {
       }
 
       final prefs = await SharedPreferences.getInstance();
+
+      // 1. Define all variables FIRST (Order matters!)
       bool biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
       String? storedPin = await const FlutterSecureStorage().read(key: 'user_pin');
-      bool isSecurityActive = biometricEnabled || storedPin != null;
+      bool isAppLockOn = prefs.getBool('app_lock_enabled') ?? false;
+
+      // 2. Calculate Logic using the variables defined above
+      bool hasSecurityMethod = biometricEnabled || storedPin != null;
+
+      // Only lock if the switch is ON AND they have a method set up
+      bool isSecurityActive = isAppLockOn && hasSecurityMethod;
 
       if ([AppScreen.welcome, AppScreen.login, AppScreen.signup, AppScreen.verifyEmail, AppScreen.splash].contains(_currentScreen)) {
         if (isSecurityActive) {
@@ -305,17 +331,22 @@ class AppState extends ChangeNotifier {
 
   void handleAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
+      // App went to background: Save time
       _lastPausedTime = DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
+      // App came to foreground: Check if we need to lock
       if (_lastPausedTime != null && _autoLockSeconds != -1) {
         final difference = DateTime.now().difference(_lastPausedTime!).inSeconds;
-        if (difference > _autoLockSeconds && isPinSet) {
+
+        // Lock only if: Time exceeded limit AND App Lock is enabled
+        if (difference > _autoLockSeconds && isAppLockEnabled) {
           navigate(AppScreen.lockUnlock);
           return;
         }
       }
       _lastPausedTime = null;
 
+      // Refresh session check on resume
       if ([AppScreen.login, AppScreen.signup, AppScreen.welcome].contains(_currentScreen)) {
         final session = supabase.Supabase.instance.client.auth.currentSession;
         if (session != null) {
@@ -357,6 +388,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
+
   // ✅ RESTORED: Needed by ProfileEditScreen
   Future<void> pickAndUploadProfileImage(BuildContext context) async {
     final picker = ImagePicker();
@@ -375,11 +407,11 @@ class AppState extends ChangeNotifier {
       final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
 
       await supabase.Supabase.instance.client.storage
-          .from('profiles')
+          .from('profile-pictures')
           .uploadBinary(fileName, fileBytes);
 
       final String publicUrl = supabase.Supabase.instance.client.storage
-          .from('profiles')
+          .from('profile-pictures')
           .getPublicUrl(fileName);
 
       _currentUser = _currentUser.copyWith(profileImageUrl: publicUrl);
@@ -444,18 +476,25 @@ class AppState extends ChangeNotifier {
 
   // ✅ RESTORED: Needed by SettingsScreen
   Future<void> updateBiometricPreference(bool enable) async {
+    // Authenticate before changing security settings
     bool authenticated = await _authService.authenticateWithBiometrics();
-    if (authenticated) {
+    // OR if no biometrics, require PIN (omitted for brevity, but recommended)
+
+    if (authenticated || !enable) { // Allow disabling without auth if you prefer
       final prefs = await SharedPreferences.getInstance();
+
       if (enable) {
         bool canUse = await _authService.isBiometricsAvailable;
         if (canUse) {
           _isBiometricEnabled = true;
           await prefs.setBool('biometric_enabled', true);
+          await prefs.setBool('app_lock_enabled', true); // ✅ Auto-enable App Lock
         }
       } else {
         _isBiometricEnabled = false;
         await prefs.setBool('biometric_enabled', false);
+        // We DO NOT auto-disable 'app_lock_enabled' here,
+        // because the user might want to fallback to PIN lock.
       }
       notifyListeners();
     }
@@ -713,29 +752,182 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  Future<void> downloadDocument(Product product) async {
-    if (product.pdfUrl == null || product.pdfUrl!.isEmpty) return;
-    final fileName = "${product.id}.pdf";
-    if (await _fileService.fileExists(fileName)) return;
+  // lib/state/app_state.dart
 
-    _downloadProgress[product.id.toString()] = 0.01;
+// ... inside AppState class ...
+
+  // Future<void> downloadDocument(Product product) async {
+  //   // ... (Permissions check - unchanged) ...
+  //   if (Platform.isAndroid) {
+  //     final status = await Permission.notification.status;
+  //     if (status.isDenied) await Permission.notification.request();
+  //   }
+  //
+  //   final String downloadUrl = product.pdfUrl ?? '';
+  //   if (downloadUrl.isEmpty || !downloadUrl.startsWith('http')) {
+  //     debugPrint("❌ Error: No valid PDF URL");
+  //     return;
+  //   }
+  //
+  //   final fileName = '${product.id}.pdf';
+  //   downloadProgress[product.id.toString()] = 0.0;
+  //   notifyListeners();
+  //
+  //   final result = await FileService().downloadAndSaveDocument(
+  //       url: downloadUrl,
+  //       fileName: fileName,
+  //       title: product.title,
+  //       onProgress: (p) {
+  //         downloadProgress[product.id.toString()] = p;
+  //         notifyListeners();
+  //       }
+  //   );
+  //
+  //   if (result != null) {
+  //     await _addToOfflineLibrary(product);
+  //     // ✅ FIXED: Pass the image URL so it shows in Activity Logs
+  //     await _dataService.logDownload(
+  //         product.id,
+  //         product.title,
+  //         true,
+  //         // coverUrl: product.imageUrl
+  //     );
+  //   } else {
+  //     await _dataService.logDownload(
+  //         product.id,
+  //         product.title,
+  //         false,
+  //
+  //     );
+  //   }
+  //
+  //   downloadProgress.remove(product.id.toString());
+  //   notifyListeners();
+  // }
+  Future<void> downloadForOffline(Product product) async {
+    // Check Permissions
+    if (Platform.isAndroid) {
+      final status = await Permission.notification.status;
+      if (status.isDenied) await Permission.notification.request();
+    }
+
+    final fileName = '${product.id}.pdf';
+
+    // Check if file already exists (e.g. was read previously)
+    if (await _fileService.fileExists(fileName)) {
+      // Just register it in the offline library list
+      await _addToOfflineLibrary(product);
+      if (_areNotificationsEnabled) {
+        _notificationService.showNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: 'Download Complete',
+            body: '${product.title} is available offline.'
+        );
+      }
+      notifyListeners();
+      return;
+    }
+
+    // Proceed to Download (With Notifications)
+    final String downloadUrl = product.pdfUrl ?? '';
+    if (downloadUrl.isEmpty || !downloadUrl.startsWith('http')) return;
+
+    downloadProgress[product.id.toString()] = 0.0;
     notifyListeners();
 
-    try {
-      final path = await _fileService.downloadAndSaveDocument(
-        url: product.pdfUrl!,
-        fileName: fileName,
-        onProgress: (progress) {
-          _downloadProgress[product.id.toString()] = progress;
-          notifyListeners();
-        },
-      );
-      if (path == null) throw "Download returned null";
-    } catch (e) {
-      debugPrint("Error downloading document: $e");
-    } finally {
-      _downloadProgress.remove(product.id.toString());
-      notifyListeners();
+    final result = await FileService().downloadAndSaveDocument(
+      url: downloadUrl,
+      fileName: fileName,
+      title: product.title,
+      showNotification: true, // ✅ SHOWS NOTIFICATION
+      onProgress: (p) {
+        downloadProgress[product.id.toString()] = p;
+        notifyListeners();
+      },
+    );
+
+    if (result != null) {
+      await _addToOfflineLibrary(product); // ✅ Adds to Offline List
+      await _dataService.logDownload(product.id, product.title, true);
+    }
+
+    downloadProgress.remove(product.id.toString());
+    notifyListeners();
+  }
+
+  Future<List<Review>> fetchProductReviews(int productId) async {
+    return await _dataService.getProductReviews(productId);
+  }
+
+  // ✅ 2. SILENT FETCH (For "Read" Button)
+  Future<void> prepareBookForReading(Product product) async {
+    final fileName = '${product.id}.pdf';
+
+    // If file exists, we are good to go
+    if (await _fileService.fileExists(fileName)) return;
+
+    // If not, download SILENTLY (No notifications, No offline list add)
+    final String downloadUrl = product.pdfUrl ?? '';
+    if (downloadUrl.isEmpty || !downloadUrl.startsWith('http')) return;
+
+    downloadProgress[product.id.toString()] = 0.0;
+    notifyListeners();
+
+    await FileService().downloadAndSaveDocument(
+      url: downloadUrl,
+      fileName: fileName,
+      title: product.title,
+      showNotification: false, // ✅ SILENT
+      onProgress: (p) {
+        downloadProgress[product.id.toString()] = p;
+        notifyListeners();
+      },
+    );
+
+    // Note: We DO NOT call _addToOfflineLibrary here.
+    downloadProgress.remove(product.id.toString());
+    notifyListeners();
+  }
+
+  // 2. NEW: Purchase Bundle
+  Future<void> purchaseBundle(Offer offer, BuildContext context) async {
+    final user = _authService.currentSupabaseUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please login first.')));
+      return;
+    }
+
+    // Optimistic Check
+    if (_walletTokens < offer.tokenPrice) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Insufficient tokens. Please top up your wallet.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    // Loading State (Optional: Add a loading spinner variable if desired)
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Processing purchase...')));
+
+    final result = await _dataService.purchaseOffer(user.id, offer.id);
+
+    if (result['success'] == true) {
+      await refreshWalletData(); // Update balance
+      await _loadUserDataFromDb(user.id); // Update owned products
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Bundle purchased successfully! Books added to library.'),
+          backgroundColor: Colors.green,
+        ));
+        navigateBack(); // Go back to list
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? 'Purchase failed'),
+          backgroundColor: Colors.red,
+        ));
+      }
     }
   }
 
@@ -754,6 +946,54 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  //******************
+  // Offline access
+  // ****************
+
+  Future<void> loadOfflineLibrary() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? offlineData = prefs.getString('offline_library');
+
+    if (offlineData != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(offlineData);
+        _offlineProducts = decoded.map((json) => Product.fromMap(json)).toList();
+        notifyListeners();
+      } catch (e) {
+        debugPrint("Error loading offline library: $e");
+      }
+    }
+  }
+  Future<void> _addToOfflineLibrary(Product product) async {
+    // 1. Check if already exists to avoid duplicates
+    if (!_offlineProducts.any((p) => p.id == product.id)) {
+      _offlineProducts.add(product);
+
+      // 2. Save to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final String encoded = jsonEncode(_offlineProducts.map((p) => p.toMap()).toList());
+      await prefs.setString('offline_library', encoded);
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeFromOfflineLibrary(Product product) async {
+    // 1. Delete the actual file
+    final fileName = '${product.id}.pdf';
+    await FileService().deleteDownloadedFile(fileName);
+
+    // 2. Remove metadata from list
+    _offlineProducts.removeWhere((p) => p.id == product.id);
+
+    // 3. Update SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final String encoded = jsonEncode(_offlineProducts.map((p) => p.toMap()).toList());
+    await prefs.setString('offline_library', encoded);
+
+    notifyListeners();
+  }
+
 
   // -------------------------------------------------------------------------
   // USER ACTIONS (Cart, Bookmark, Search)
@@ -852,12 +1092,20 @@ class AppState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _hasSkippedSetup = prefs.getBool('has_skipped_profile_setup') ?? false;
     _isBiometricEnabled = prefs.getBool('biometric_enabled') ?? false;
+    _isAppLockEnabled = prefs.getBool('app_lock_enabled') ?? false;
     await loadSearchHistory();
   }
 
   Future<void> loadTransactionPin() async {
     final prefs = await SharedPreferences.getInstance();
     _transactionPin = prefs.getString('transaction_pin');
+    notifyListeners();
+  }
+
+  Future<void> toggleAppLock(bool enable) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_lock_enabled', enable);
+    _isAppLockEnabled = enable;
     notifyListeners();
   }
 

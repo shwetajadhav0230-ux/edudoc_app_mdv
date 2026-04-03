@@ -29,10 +29,10 @@ class OffersScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Header
               Text(
                 'Limited Time Deals',
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -40,8 +40,6 @@ class OffersScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 24),
-
-              // 2. Dynamic Offers List (From Supabase)
               if (appState.offers.isEmpty)
                 const Center(
                   child: Padding(
@@ -54,7 +52,8 @@ class OffersScreen extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: appState.offers.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  separatorBuilder: (context, index) =>
+                  const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final offer = appState.offers[index];
                     return _buildOfferCard(context, offer, appState);
@@ -69,6 +68,12 @@ class OffersScreen extends StatelessWidget {
 
   Widget _buildOfferCard(BuildContext context, Offer offer, AppState appState) {
     final theme = Theme.of(context);
+
+    // ✅ Handle nullable cover image
+    final imageProvider = (offer.coverImageUrl != null && offer.coverImageUrl!.isNotEmpty)
+        ? NetworkImage(offer.coverImageUrl!) as ImageProvider
+        : const AssetImage('assets/images/placeholder_offer.png'); // Ensure you have a placeholder or remove this
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -82,26 +87,31 @@ class OffersScreen extends StatelessWidget {
               height: 150,
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(16)),
                 image: DecorationImage(
-                  image: AssetImage('assets/images/${offer.imageUrl}'), // Ensure these exist or use NetworkImage
+                  image: imageProvider,
                   fit: BoxFit.cover,
-                  onError: (_, __) {}, // Silent error for missing assets
+                  onError: (_, __) {},
                 ),
               ),
               alignment: Alignment.topRight,
-              child: Container(
+              child: offer.discount != null // ✅ Check for null
+                  ? Container(
                 margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.redAccent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  offer.discount,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  offer.discount!, // ✅ Force unwrap after check
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-              ),
+              )
+                  : null,
             ),
             // Details
             Padding(
@@ -109,9 +119,12 @@ class OffersScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(offer.title, style: theme.textTheme.titleLarge?.copyWith(fontSize: 18)),
+                  Text(offer.title,
+                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 18)),
                   const SizedBox(height: 4),
-                  Text(offer.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  // ✅ Use discountLabel as description fallback since 'description' column doesn't exist
+                  Text(offer.discountLabel ?? 'Special Bundle',
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,9 +132,12 @@ class OffersScreen extends StatelessWidget {
                       Text(
                         '${offer.tokenPrice} Tokens',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary),
                       ),
-                      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      const Icon(Icons.arrow_forward_ios,
+                          size: 16, color: Colors.grey),
                     ],
                   ),
                 ],

@@ -3,41 +3,55 @@
 class Offer {
   final int id;
   final String title;
-  final String description; // ✅ Added
-  final String discount;
-  final String duration;
-  final String status;
-  final String imageUrl;    // ✅ Added
-  final List<int> productIds;
+  final String? coverImageUrl; // ✅ Matches SQL cover_image_url
+  final String? discountLabel; // ✅ Matches SQL discount_label
   final int tokenPrice;
+  final String? duration;
+  final String status;
+  final String? discount;      // ✅ Matches SQL discount (text)
+  final List<int> productIds;
 
   Offer({
     required this.id,
     required this.title,
-    required this.description, // ✅ Added
-    required this.discount,
-    required this.duration,
-    required this.status,
-    required this.imageUrl,    // ✅ Added
-    required this.productIds,
+    this.coverImageUrl,
+    this.discountLabel,
     required this.tokenPrice,
+    this.duration,
+    required this.status,
+    this.discount,
+    required this.productIds,
   });
 
-  // Factory to create an Offer from Supabase JSON
   factory Offer.fromMap(Map<String, dynamic> map) {
     return Offer(
       id: map['id'] ?? 0,
       title: map['title'] ?? '',
-      description: map['description'] ?? '', // ✅ Map from DB
-      discount: map['discount'] ?? '',
-      duration: map['duration'] ?? '',
-      status: map['status'] ?? 'Inactive',
-      imageUrl: map['image_url'] ?? '',      // ✅ Map from DB (snake_case)
-      // Handle Supabase array (which might be List<dynamic>)
+      // ✅ Map from your new SQL column
+      coverImageUrl: map['cover_image_url'],
+      discountLabel: map['discount_label'],
+      tokenPrice: map['token_price'] ?? 0,
+      duration: map['duration'],
+      // Handle status enum as string or default to Active
+      status: map['status']?.toString() ?? 'Active',
+      discount: map['discount'],
+      // Handle Supabase array
       productIds: map['product_ids'] != null
           ? List<int>.from(map['product_ids'])
           : [],
-      tokenPrice: map['token_price'] ?? 0,
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'cover_image_url': coverImageUrl,
+      'discount_label': discountLabel,
+      'token_price': tokenPrice,
+      'duration': duration,
+      'status': status,
+      'discount': discount,
+      'product_ids': productIds,
+    };
   }
 }

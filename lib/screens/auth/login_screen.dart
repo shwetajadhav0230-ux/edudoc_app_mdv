@@ -12,7 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Key used to validate the form state
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -27,20 +26,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin(AppState appState) async {
-    // 1. Check if the form validation passes before proceeding
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-
-      // 2. Pass the validated data to the login service
       await appState.login(
         _emailController.text.trim(),
         _passwordController.text.trim(),
         context,
       );
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -61,11 +54,46 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Form( // 3. Wrap your inputs in a Form widget
+        child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // ✅ UPDATED: Added Circular Logo at the top
+              Center(
+                child: Container(
+                  width: 100, // Slightly smaller than welcome screen
+                  height: 100,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'lib/assets/images/app_logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          child: Icon(
+                            Icons.school,
+                            size: 50,
+                            color: theme.colorScheme.primary,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+
               Text(
                 'Welcome Back!',
                 style: theme.textTheme.headlineMedium?.copyWith(
@@ -91,7 +119,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                // 4. Link the validator to AppState
                 validator: appState.validateEmail,
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -113,7 +140,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                // 5. Link the validator to AppState
                 validator: appState.validatePassword,
                 obscureText: _obscurePassword,
               ),
@@ -157,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
               OutlinedButton.icon(
                 onPressed: () => appState.loginWithGoogle(context),
                 icon: Image.asset(
-                  'lib/assets/images/google_icon.png',
+                  'lib/assets/images/google_icon.jpeg',
                   height: 24,
                   width: 24,
                   errorBuilder: (context, error, stackTrace) =>

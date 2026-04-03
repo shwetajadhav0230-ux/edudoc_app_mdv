@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 import '../../state/app_state.dart';
 import '../../models/product.dart';
 
@@ -20,7 +21,6 @@ class _ReadingScreenState extends State<ReadingScreen> {
   bool _isLoading = true;
   bool _hasError = false;
 
-  // ✅ Added for Scroll Bar / Page Scrubber
   int _totalPages = 0;
   int _currentPage = 0;
   bool _isReady = false;
@@ -28,19 +28,83 @@ class _ReadingScreenState extends State<ReadingScreen> {
   @override
   void initState() {
     super.initState();
+    _enableSecureMode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDocument();
     });
+  }
+
+  @override
+  void dispose() {
+    _disableSecureMode();
+    super.dispose();
+  }
+
+  Future<void> _enableSecureMode() async {
+    try {
+      await FlutterWindowManagerPlus.addFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    } catch (e) {
+      debugPrint("Could not enable secure mode: $e");
+    }
+  }
+
+  Future<void> _disableSecureMode() async {
+    try {
+      await FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    } catch (e) {
+      debugPrint("Could not disable secure mode: $e");
+    }
   }
 
   Future<void> _loadDocument() async {
     final appState = Provider.of<AppState>(context, listen: false);
     final productId = int.tryParse(appState.selectedProductId ?? '') ?? 0;
 
-    final product = appState.products.firstWhere(
+    // ✅ FIXED: Restored product lookup logic so 'product' is defined
+    Product product = appState.products.firstWhere(
           (p) => p.id == productId,
-      orElse: () => Product(id: 0, title: 'Unknown', type: '', description: '', price: 0, isFree: false, category: '', tags: [], rating: 0, author: '', pages: 0, reviewCount: 0, details: '', content: '', imageUrl: ''),
+      orElse: () => Product(
+        id: 0,
+        title: 'Unknown',
+        type: '',
+        description: '',
+        price: 0,
+        isFree: false,
+        category: '',
+        tags: [],
+        rating: 0,
+        author: '',
+        pages: 0,
+        reviewCount: 0,
+        details: '',
+        content: '',
+        imageUrl: '',
+      ),
     );
+
+    // If not found in online list, check offline library
+    if (product.id == 0) {
+      product = appState.offlineProducts.firstWhere(
+            (p) => p.id == productId,
+        orElse: () => Product(
+          id: 0,
+          title: 'Unknown',
+          type: '',
+          description: '',
+          price: 0,
+          isFree: false,
+          category: '',
+          tags: [],
+          rating: 0,
+          author: '',
+          pages: 0,
+          reviewCount: 0,
+          details: '',
+          content: '',
+          imageUrl: '',
+        ),
+      );
+    }
 
     if (product.id == 0) {
       if (mounted) setState(() { _isLoading = false; _hasError = true; });
@@ -52,7 +116,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
     if (path != null) {
       if (mounted) setState(() { _localPath = path; _isLoading = false; });
     } else {
-      await appState.downloadDocument(product);
+      // Fetch silently if not found locally
+      await appState.prepareBookForReading(product);
       final newPath = await appState.getLocalPdfPath(product);
 
       if (mounted) {
@@ -67,12 +132,23 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (This build method remains exactly as you had it)
     final appState = Provider.of<AppState>(context);
     final productId = int.tryParse(appState.selectedProductId ?? '') ?? 0;
     final isDownloading = appState.downloadProgress.containsKey(productId.toString());
     final progress = appState.downloadProgress[productId.toString()] ?? 0.0;
 
-    final product = appState.products.firstWhere((p) => p.id == productId, orElse: () => Product(id: 0, title: 'Reading', type: '', description: '', price: 0, isFree: false, category: '', tags: [], rating: 0, author: '', pages: 0, reviewCount: 0, details: '', content: '', imageUrl: ''));
+    Product product = appState.products.firstWhere(
+          (p) => p.id == productId,
+      orElse: () => Product(id: 0, title: 'Reading', type: '', description: '', price: 0, isFree: false, category: '', tags: [], rating: 0, author: '', pages: 0, reviewCount: 0, details: '', content: '', imageUrl: ''),
+    );
+
+    if (product.id == 0) {
+      product = appState.offlineProducts.firstWhere(
+            (p) => p.id == productId,
+        orElse: () => Product(id: 0, title: 'Reading', type: '', description: '', price: 0, isFree: false, category: '', tags: [], rating: 0, author: '', pages: 0, reviewCount: 0, details: '', content: '', imageUrl: ''),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -114,7 +190,6 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ),
       );
     }
-
     if (isDownloading) {
       return Center(
         child: Column(
@@ -127,13 +202,10 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ),
       );
     }
-
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (_localPath != null) {
-      // ✅ Using Stack to overlay the scroll bar (slider) at the bottom
       return Stack(
         children: [
           KeyedSubtree(
@@ -146,77 +218,48 @@ class _ReadingScreenState extends State<ReadingScreen> {
               pageFling: true,
               nightMode: appState.readerColorMode == 'Night',
               onRender: (pages) {
-                setState(() {
-                  _totalPages = pages!;
-                  _isReady = true;
-                });
+                setState(() { _totalPages = pages!; _isReady = true; });
               },
               onViewCreated: (PDFViewController pdfViewController) {
-                if (!_controller.isCompleted) {
-                  _controller.complete(pdfViewController);
-                }
+                if (!_controller.isCompleted) { _controller.complete(pdfViewController); }
               },
               onPageChanged: (int? page, int? total) {
-                setState(() {
-                  _currentPage = page!;
-                });
+                setState(() { _currentPage = page!; });
               },
               onError: (e) => debugPrint("PDF Error: $e"),
             ),
           ),
-
-          // ✅ The "Scroll Bar" (Page Scrubber)
           if (_isReady && _totalPages > 0)
             Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
+              bottom: 20, left: 20, right: 20,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.black87,
                   borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
-                  ],
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      "${_currentPage + 1}",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
+                    Text("${_currentPage + 1}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     Expanded(
                       child: SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          trackHeight: 4,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                          trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                           overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                          activeTrackColor: Colors.white,
-                          inactiveTrackColor: Colors.white24,
-                          thumbColor: Colors.amber,
+                          activeTrackColor: Colors.white, inactiveTrackColor: Colors.white24, thumbColor: Colors.amber,
                         ),
                         child: Slider(
                           value: _currentPage.toDouble(),
                           min: 0,
                           max: (_totalPages - 1).toDouble(),
                           divisions: _totalPages > 1 ? _totalPages - 1 : 1,
-                          onChanged: (double value) {
-                            setState(() {
-                              _currentPage = value.toInt();
-                            });
-                          },
-                          onChangeEnd: (double value) async {
-                            final controller = await _controller.future;
-                            controller.setPage(value.toInt());
-                          },
+                          onChanged: (double value) { setState(() { _currentPage = value.toInt(); }); },
+                          onChangeEnd: (double value) async { final controller = await _controller.future; controller.setPage(value.toInt()); },
                         ),
                       ),
                     ),
-                    Text(
-                      "$_totalPages",
-                      style: const TextStyle(color: Colors.white70),
-                    ),
+                    Text("$_totalPages", style: const TextStyle(color: Colors.white70)),
                   ],
                 ),
               ),
@@ -224,17 +267,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ],
       );
     }
-
     return const Center(child: Text("Document not found"));
   }
 
   void _showReaderSettings(BuildContext context, AppState appState) {
-    // ... (Keep your existing settings modal code here)
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         child: Column(

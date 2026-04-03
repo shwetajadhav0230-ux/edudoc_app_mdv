@@ -6,6 +6,8 @@ import 'package:local_auth/local_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import '../models/user.dart' as app_models;
+import '../utils/constants.dart'; // Added
+import 'data_service.dart'; // Added
 
 class AuthService {
   // Singleton Pattern
@@ -19,6 +21,9 @@ class AuthService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final LocalAuthentication _localAuth = LocalAuthentication();
 
+  // ✅ Added: Lazy initialization for logging service
+  late final DataService _dataService = DataService();
+
   // --- 1. Supabase Authentication ---
 
   User? get currentSupabaseUser => _supabase.auth.currentUser;
@@ -31,13 +36,21 @@ class AuthService {
         password: password,
         data: {'full_name': fullName},
       );
+
+      // ✅ Added: Log User Creation
+      if (response.user != null) {
+        await _dataService.logActivity(
+          action: AppActions.userCreated,
+          entityType: EntityTypes.users,
+          description: 'New user registered: $email',
+        );
+      }
+
       return response;
     } catch (e) {
       rethrow;
     }
   }
-
-  // In lib/services/auth_service.dart
 
   Future<void> deleteAccount() async {
     try {
@@ -127,6 +140,9 @@ class AuthService {
   /// ✅ UPDATED: Update User Profile in Supabase
   /// Only updates fields that exist in your database table.
   Future<void> updateUserProfile(app_models.User user) async {
+    // 1. Fetch old data for logging comparison
+    final oldData = await _supabase.from('users').select().eq('id', user.id).maybeSingle();
+
     final updates = {
       'full_name': user.fullName,
       'phone_num': user.phoneNumber,
@@ -139,6 +155,17 @@ class AuthService {
         'id': user.id,
         ...updates,
       });
+
+      // 2. Log activity with old vs new data
+      await _dataService.logActivity(
+        action: AppActions.profileUpdated,
+        entityType: EntityTypes.users,
+        description: 'User updated profile information',
+        oldData: oldData,
+        newData: updates,
+        // Save profile pic as cover_url
+      );
+
     } catch (e) {
       debugPrint('Error updating profile: $e');
       rethrow;

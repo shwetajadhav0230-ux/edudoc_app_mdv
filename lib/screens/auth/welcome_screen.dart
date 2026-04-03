@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../state/app_state.dart'; // Uses your AppState
+import '../../state/app_state.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -10,7 +10,6 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // --- MODIFIED: Uses AppState navigation ---
     final appState = Provider.of<AppState>(context, listen: false);
 
     return Scaffold(
@@ -22,12 +21,44 @@ class WelcomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(flex: 2),
-              Icon(
-                Icons.school,
-                size: 80,
-                color: theme.colorScheme.primary,
+
+              // ✅ UPDATED: Circular Logo with Fallback
+              Center(
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // Optional: Add a subtle shadow or border
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'lib/assets/images/app_logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback if image is missing
+                        return Container(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          child: Icon(
+                            Icons.school,
+                            size: 60,
+                            color: theme.colorScheme.primary,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 24),
               Text(
                 'Welcome to EduDoc',
                 textAlign: TextAlign.center,
@@ -37,7 +68,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                ' Platform for Sharing and Discovering Documents.',
+                'Platform for Sharing and Discovering Documents.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: const Color(0xFF009688),
@@ -45,10 +76,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const Spacer(flex: 3),
               ElevatedButton(
-                onPressed: () {
-                  // --- MODIFIED: Uses AppState navigation ---
-                  appState.navigate(AppScreen.signup);
-                },
+                onPressed: () => appState.navigate(AppScreen.signup),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.colorScheme.onPrimary,
@@ -63,10 +91,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: () {
-                  // --- MODIFIED: Uses AppState navigation ---
-                  appState.navigate(AppScreen.login);
-                },
+                onPressed: () => appState.navigate(AppScreen.login),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: theme.colorScheme.primary,
                   side: BorderSide(color: theme.colorScheme.primary),

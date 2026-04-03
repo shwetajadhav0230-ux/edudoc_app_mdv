@@ -1,9 +1,7 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../state/app_state.dart'; // Ensure correct path to AppState
+import '../../state/app_state.dart';
 
 class ProfileAvatar extends StatelessWidget {
   final VoidCallback onTap;
@@ -11,41 +9,40 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use Consumer to listen only to changes in the AppState's User object
     return Consumer<AppState>(
       builder: (context, appState, child) {
         final user = appState.currentUser;
         final theme = Theme.of(context);
 
-        Widget avatarWidget;
+        ImageProvider? imageProvider;
 
-        if (user.profileImageUrl != null &&
-            user.profileImageUrl!.isNotEmpty) {
-          // Display image from Base64 string
-          try {
-            final imageBytes = base64Decode(user.profileImageUrl!);
-            avatarWidget = CircleAvatar(
-              backgroundImage: MemoryImage(imageBytes),
-              radius: 16,
-            );
-          } catch (e) {
-            // Fallback if Base64 decoding fails
-            avatarWidget = CircleAvatar(
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
-              radius: 5,
-              child: const Icon(Icons.person, color: Colors.white, size: 16),
-            );
+        if (user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty) {
+          if (user.profileImageUrl!.startsWith('http')) {
+            // ✅ CASE 1: It's a URL (Supabase Storage)
+            imageProvider = NetworkImage(user.profileImageUrl!);
+          } else {
+            // ✅ CASE 2: It's a Base64 string (Legacy/Local)
+            try {
+              final imageBytes = base64Decode(user.profileImageUrl!);
+              imageProvider = MemoryImage(imageBytes);
+            } catch (e) {
+              // Invalid format
+              imageProvider = null;
+            }
           }
-        } else {
-          // Display default icon placeholder
-          avatarWidget = CircleAvatar(
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
-            radius: 5,
-            child: const Icon(Icons.person, color: Colors.white, size: 16),
-          );
         }
 
-        return GestureDetector(onTap: onTap, child: avatarWidget);
+        return GestureDetector(
+          onTap: onTap,
+          child: CircleAvatar(
+            radius: 18, // Slightly larger for better visibility
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+            backgroundImage: imageProvider,
+            child: imageProvider == null
+                ? Icon(Icons.person, color: theme.colorScheme.primary, size: 20)
+                : null,
+          ),
+        );
       },
     );
   }

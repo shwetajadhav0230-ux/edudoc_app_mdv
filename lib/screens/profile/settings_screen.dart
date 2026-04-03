@@ -71,6 +71,13 @@ class SettingsScreen extends StatelessWidget {
               subtitle: 'Create a 4-digit code to protect app entry',
               onTap: () => _showSetAppUnlockPinDialog(context, appState),
             ),
+            _buildToggleTile(
+              icon: Icons.phonelink_lock,
+              color: Colors.deepPurple,
+              title: 'Enable App Lock',
+              value: appState.isAppLockEnabled,
+              onChanged: (val) => appState.toggleAppLock(val),
+            ),
             _buildSettingTile(
               context,
               icon: Icons.lock_reset_outlined,
@@ -94,7 +101,7 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
 
-            // DYNAMIC BIOMETRIC TOGGLE
+
             // Using FutureBuilder to handle the async biometric check safely
             FutureBuilder<List<BiometricType>>(
               future: appState.enrolledBiometrics,
