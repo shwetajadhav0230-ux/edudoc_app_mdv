@@ -45,7 +45,8 @@ void main() async {
   );
 
   try {
-    await FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    await FlutterWindowManagerPlus.clearFlags(
+        FlutterWindowManagerPlus.FLAG_SECURE);
   } catch (e) {
     debugPrint("Failed to clear secure flags: $e");
   }
@@ -68,7 +69,6 @@ class EduDocApp extends StatefulWidget {
 }
 
 class _EduDocAppState extends State<EduDocApp> with WidgetsBindingObserver {
-
   @override
   void initState() {
     super.initState();
@@ -83,7 +83,8 @@ class _EduDocAppState extends State<EduDocApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    Provider.of<AppState>(context, listen: false).handleAppLifecycleState(state);
+    Provider.of<AppState>(context, listen: false)
+        .handleAppLifecycleState(state);
   }
 
   @override
@@ -119,47 +120,80 @@ class _EduDocAppState extends State<EduDocApp> with WidgetsBindingObserver {
       title: 'EduDoc',
       debugShowCheckedModeBanner: false,
       theme: appState.isDarkTheme ? darkTheme : lightTheme,
-      home: _getScreen(appState.currentScreen),
+      home: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) {
+          if (!didPop) {
+            Provider.of<AppState>(context, listen: false).navigateBack();
+          }
+        },
+        child: _getScreen(appState.currentScreen),
+      ),
     );
   }
 
   Widget _getScreen(AppScreen screen) {
     switch (screen) {
       case AppScreen.splash:
-      case AppScreen.welcome: return const WelcomeScreen();
-      case AppScreen.login: return const LoginScreen();
-    // ✅ Restored YOUR exact class name
-      case AppScreen.signup: return const SignUpScreen();
-      case AppScreen.verifyEmail: return const VerifyEmailScreen();
-      case AppScreen.permissions: return const PermissionsScreen();
-    // ✅ Restored YOUR exact class name
-      case AppScreen.lockUnlock: return const LockUnlockScreen();
+      case AppScreen.welcome:
+        return const WelcomeScreen();
+      case AppScreen.login:
+        return const LoginScreen();
+      // ✅ Restored YOUR exact class name
+      case AppScreen.signup:
+        return const SignUpScreen();
+      case AppScreen.verifyEmail:
+        return const VerifyEmailScreen();
+      case AppScreen.permissions:
+        return const PermissionsScreen();
+      // ✅ Restored YOUR exact class name
+      case AppScreen.lockUnlock:
+        return const LockUnlockScreen();
 
-    // Tab Screens
-      case AppScreen.home: return const BottomNav(initialIndex: 0, child: HomeScreen());
-      case AppScreen.search: return const BottomNav(initialIndex: 1, child: SearchScreen());
-      case AppScreen.library: return const BottomNav(initialIndex: 2, child: LibraryScreen());
-      case AppScreen.profile: return const BottomNav(initialIndex: 3, child: ProfileScreen());
+      // Tab Screens
+      case AppScreen.home:
+        return const BottomNav(initialIndex: 0, child: HomeScreen());
+      case AppScreen.search:
+        return const BottomNav(initialIndex: 1, child: SearchScreen());
+      case AppScreen.library:
+        return const BottomNav(initialIndex: 2, child: LibraryScreen());
+      case AppScreen.cart:
+        return const BottomNav(initialIndex: 3, child: CartScreen());
+      case AppScreen.profile:
+        return const BottomNav(initialIndex: 4, child: ProfileScreen());
 
-    // Other Screens
-    // ✅ Restored YOUR exact class name
-      case AppScreen.productDetails: return const ProductDetailsScreen();
-      case AppScreen.cart: return const CartScreen();
-      case AppScreen.wallet: return const WalletScreen();
-      case AppScreen.settings: return const SettingsScreen();
-      case AppScreen.bookmarks: return const BookmarksScreen();
-      case AppScreen.offers: return const OffersScreen();
-    // ✅ Restored YOUR exact class name
-      case AppScreen.offerDetails: return const OfferDetailsScreen();
-      case AppScreen.userActivity: return const UserActivityScreen();
-      case AppScreen.profileEdit: return const ProfileEditScreen();
-      case AppScreen.profileSetup: return const ProfileSetupScreen();
-      case AppScreen.emailManagement: return const EmailManagementScreen();
-      case AppScreen.changePassword: return const ChangePasswordScreen();
-      case AppScreen.about: return const AboutScreen();
-      case AppScreen.helpSupport: return const HelpSupportScreen();
+      // Other Screens
+      // ✅ Restored YOUR exact class name
+      case AppScreen.productDetails:
+        return const ProductDetailsScreen();
+      case AppScreen.wallet:
+        return const WalletScreen();
+      case AppScreen.settings:
+        return const SettingsScreen();
+      case AppScreen.bookmarks:
+        return const BookmarksScreen();
+      case AppScreen.offers:
+        return const OffersScreen();
+      // ✅ Restored YOUR exact class name
+      case AppScreen.offerDetails:
+        return const OfferDetailsScreen();
+      case AppScreen.userActivity:
+        return const UserActivityScreen();
+      case AppScreen.profileEdit:
+        return const ProfileEditScreen();
+      case AppScreen.profileSetup:
+        return const ProfileSetupScreen();
+      case AppScreen.emailManagement:
+        return const EmailManagementScreen();
+      case AppScreen.changePassword:
+        return const ChangePasswordScreen();
+      case AppScreen.about:
+        return const AboutScreen();
+      case AppScreen.helpSupport:
+        return const HelpSupportScreen();
 
-      default: return const WelcomeScreen();
+      default:
+        return const WelcomeScreen();
     }
   }
 }

@@ -804,6 +804,10 @@ class AppState extends ChangeNotifier {
   //   downloadProgress.remove(product.id.toString());
   //   notifyListeners();
   // }
+  Future<String?> getOfflineAudioPath(String productId) async {
+    return await _fileService.getLocalFilePath('${productId}_audio.mp3');
+  }
+
   Future<void> downloadForOffline(Product product) async {
     // Check Permissions
     if (Platform.isAndroid) {
@@ -811,10 +815,14 @@ class AppState extends ChangeNotifier {
       if (status.isDenied) await Permission.notification.request();
     }
 
-    final fileName = '${product.id}.pdf';
+    final pdfFileName = '${product.id}.pdf';
+    final audioFileName = '${product.id}_audio.mp3';
 
     // Check if file already exists (e.g. was read previously)
-    if (await _fileService.fileExists(fileName)) {
+    bool pdfExists = await _fileService.fileExists(pdfFileName);
+    bool audioExists = product.audioUrl == null || product.audioUrl!.isEmpty || await _fileService.fileExists(audioFileName);
+
+    if (pdfExists && audioExists) {
       // Just register it in the offline library list
       await _addToOfflineLibrary(product);
       if (_areNotificationsEnabled) {
@@ -828,25 +836,44 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    // Proceed to Download (With Notifications)
-    final String downloadUrl = product.pdfUrl ?? '';
-    if (downloadUrl.isEmpty || !downloadUrl.startsWith('http')) return;
-
     downloadProgress[product.id.toString()] = 0.0;
     notifyListeners();
+    bool allSuccess = true;
 
-    final result = await FileService().downloadAndSaveDocument(
-      url: downloadUrl,
-      fileName: fileName,
-      title: product.title,
-      showNotification: true, // ✅ SHOWS NOTIFICATION
-      onProgress: (p) {
-        downloadProgress[product.id.toString()] = p;
-        notifyListeners();
-      },
-    );
+    // Download PDF if missing
+    if (!pdfExists) {
+      final String downloadUrl = product.pdfUrl ?? '';
+      if (downloadUrl.isNotEmpty && downloadUrl.startsWith('http')) {
+        final result = await FileService().downloadAndSaveDocument(
+          url: downloadUrl,
+          fileName: pdfFileName,
+          title: '${product.title} (Document)',
+          showNotification: true,
+          onProgress: (p) {
+            downloadProgress[product.id.toString()] = p * (product.audioUrl != null && product.audioUrl!.isNotEmpty ? 0.5 : 1.0);
+            notifyListeners();
+          },
+        );
+        if (result == null) allSuccess = false;
+      }
+    }
 
-    if (result != null) {
+    // Download Audio if missing
+    if (!audioExists && product.audioUrl != null && product.audioUrl!.isNotEmpty) {
+      final result = await FileService().downloadAndSaveDocument(
+        url: product.audioUrl!,
+        fileName: audioFileName,
+        title: '${product.title} (Audio)',
+        showNotification: false,
+        onProgress: (p) {
+          downloadProgress[product.id.toString()] = 0.5 + (0.5 * p);
+          notifyListeners();
+        },
+      );
+      if (result == null) allSuccess = false;
+    }
+
+    if (allSuccess) {
       await _addToOfflineLibrary(product); // ✅ Adds to Offline List
       await _dataService.logDownload(product.id, product.title, true);
     }
@@ -854,6 +881,7 @@ class AppState extends ChangeNotifier {
     downloadProgress.remove(product.id.toString());
     notifyListeners();
   }
+
 
   Future<List<Review>> fetchProductReviews(int productId) async {
     return await _dataService.getProductReviews(productId);

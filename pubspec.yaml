@@ -36,6 +36,8 @@ dependencies:
   pdfx: any
   razorpay_flutter: 1.4.0
   flutter_secure_storage: ^9.0.0   # For saving Auth Tokens & PINs securely
+  just_audio: ^0.9.36              # Audio playback
+  audio_session: ^0.1.18          # Audio session management
 
     # 2. Biometrics & Security
   local_auth: ^2.1.8               # For Fingerprint/FaceID

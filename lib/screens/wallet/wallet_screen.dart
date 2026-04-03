@@ -14,7 +14,11 @@ class WalletScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Wallet'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('My Wallet'),
+        elevation: 0,
+        leading: BackButton(onPressed: () => appState.navigateBack()),
+      ),
       body: RefreshIndicator(
         // ADDED: Link to the new refresh method
         onRefresh: () => appState.refreshWalletData(),

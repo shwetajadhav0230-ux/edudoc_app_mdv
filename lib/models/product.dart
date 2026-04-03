@@ -16,6 +16,7 @@
     final String content;
     final String? pdfUrl;
     final String imageUrl;
+    final String? audioUrl;
 
     Product({
       required this.id,
@@ -35,6 +36,7 @@
       required this.content,
       this.pdfUrl,
       required this.imageUrl,
+      this.audioUrl,
     });
 
     // ADDED: copyWith method to handle immutable state updates
@@ -55,8 +57,8 @@
       String? details,
       String? content,
       String? pdfUrl,
-
       String? imageUrl,
+      String? audioUrl,
     }) {
       return Product(
         id: id ?? this.id,
@@ -76,6 +78,7 @@
         content: content ?? this.content,
         pdfUrl: pdfUrl ?? this.pdfUrl,
         imageUrl: imageUrl ?? this.imageUrl,
+        audioUrl: audioUrl ?? this.audioUrl,
       );
     }
 
@@ -102,6 +105,7 @@
         content: map['content'] ?? '',
         pdfUrl: map['pdf_url'],
         imageUrl: map['cover_image_url'] ?? map['image_url'] ?? '',
+        audioUrl: map['audio_url'],
       );
     }
 
@@ -123,6 +127,7 @@
         'content': content,
         'pdf_url': pdfUrl,
         'image_url': imageUrl,
+        'audio_url': audioUrl,
       };
     }
   }

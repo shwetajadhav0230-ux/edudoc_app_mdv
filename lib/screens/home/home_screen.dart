@@ -177,8 +177,11 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }).toList();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+    return RefreshIndicator(
+      onRefresh: () => appState.refreshData(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -316,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
+    ),  // closes SingleChildScrollView
+    );  // closes RefreshIndicator
   }
 }

@@ -1,0 +1,13 @@
+token reverting to user
+logs(admin)
+notifications[app]
+user review
+pages of book 
+profile pic on home page
+product not getting added to library after purchase
+
+
+
+Tokens Update
+Database function and policies polishing 
+Activity log 
