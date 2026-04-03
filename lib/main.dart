@@ -19,6 +19,7 @@ import 'screens/auth/welcome_screen.dart';
 import 'screens/cart/cart_screen.dart';
 import 'screens/common/about_screen.dart';
 import 'screens/common/help_support_screen.dart';
+import 'screens/common/loading_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/library/bookmarks_screen.dart';
 import 'screens/library/library_screen.dart';
@@ -51,7 +52,11 @@ void main() async {
     debugPrint("Failed to clear secure flags: $e");
   }
 
-  await NotificationService().init();
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    debugPrint('Notification init failed (non-fatal): $e');
+  }
 
   runApp(
     ChangeNotifierProvider(
@@ -127,12 +132,13 @@ class _EduDocAppState extends State<EduDocApp> with WidgetsBindingObserver {
             Provider.of<AppState>(context, listen: false).navigateBack();
           }
         },
-        child: _getScreen(appState.currentScreen),
+        child: _getScreen(appState, appState.currentScreen),
       ),
     );
   }
 
-  Widget _getScreen(AppScreen screen) {
+  Widget _getScreen(AppState appState, AppScreen screen) {
+    if (!appState.isInitialized) return const LoadingScreen();
     switch (screen) {
       case AppScreen.splash:
       case AppScreen.welcome:

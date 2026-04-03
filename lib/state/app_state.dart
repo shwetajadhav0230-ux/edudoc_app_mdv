@@ -54,6 +54,10 @@ class AppState extends ChangeNotifier {
   AppScreen _currentScreen = AppScreen.splash;
   final List<AppScreen> _historyStack = [];
 
+  // --- Initialization State ---
+  bool _isInitialized = false;
+  String? _initError;
+
   // Subscription
   StreamSubscription<List<Map<String, dynamic>>>? _walletSubscription;
   late final StreamSubscription<supabase.AuthState> _authSubscription;
@@ -121,6 +125,8 @@ class AppState extends ChangeNotifier {
   // GETTERS
   // -------------------------------------------------------------------------
   AppScreen get currentScreen => _currentScreen;
+  bool get isInitialized => _isInitialized;
+  String? get initError => _initError;
   String get userRole => _userRole;
   bool get isDarkTheme => _isDarkTheme;
   int get walletTokens => _walletTokens;
@@ -204,11 +210,30 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _initApp() async {
-    await _notificationService.init();
-    await loadTransactionPin();
-    await _loadLocalData();
-    await fetchProducts();
-    await fetchOffers();
+    _isInitialized = false;
+    _initError = null;
+    notifyListeners();
+
+    try {
+      await loadTransactionPin();
+
+      await Future.any([
+        _loadLocalData(),
+        Future.delayed(const Duration(seconds: 15)),
+      ]);
+
+      await Future.any([
+        fetchProducts(),
+        Future.delayed(const Duration(seconds: 15)),
+      ]);
+
+      await Future.any([
+        fetchOffers(),
+        Future.delayed(const Duration(seconds: 15)),
+      ]);
+    } catch (e) {
+      debugPrint('EduDoc init warning: $e');
+    }
 
     _authSubscription = supabase.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final session = data.session;
@@ -230,15 +255,33 @@ class AppState extends ChangeNotifier {
       }
     });
 
-    final session = supabase.Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      await _handleAutoLogin();
-      await _loadUserDataFromDb(session.user.id);
-      _startWalletListener(session.user.id);
-    } else {
+    try {
+      final session = supabase.Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        await Future.any([
+          _handleAutoLogin(),
+          Future.delayed(const Duration(seconds: 15)),
+        ]);
+        await Future.any([
+          _loadUserDataFromDb(session.user.id),
+          Future.delayed(const Duration(seconds: 15)),
+        ]);
+        _startWalletListener(session.user.id);
+      } else {
+        _currentScreen = AppScreen.welcome;
+      }
+    } catch (e) {
+      debugPrint('EduDoc auth init error: $e');
+      _initError = 'Could not connect. Check your internet and retry.';
       _currentScreen = AppScreen.welcome;
-      notifyListeners();
     }
+
+    _isInitialized = true;
+    notifyListeners();
+  }
+
+  Future<void> retryInit() async {
+    await _initApp();
   }
 
   // -------------------------------------------------------------------------

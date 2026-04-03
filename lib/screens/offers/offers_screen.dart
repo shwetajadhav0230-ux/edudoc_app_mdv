@@ -22,47 +22,47 @@ class OffersScreen extends StatelessWidget {
       body: appState.isLoadingOffers
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: () => appState.refreshData(),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Limited Time Deals',
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Grab these exclusive bundles before they expire!',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              if (appState.offers.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 50.0),
-                    child: Text("No active offers at the moment."),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: appState.offers.length,
-                  separatorBuilder: (context, index) =>
-                  const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final offer = appState.offers[index];
-                    return _buildOfferCard(context, offer, appState);
-                  },
+              onRefresh: () => appState.refreshData(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Limited Time Deals',
+                      style: theme.textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Grab these exclusive bundles before they expire!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 24),
+                    if (appState.offers.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 50.0),
+                          child: Text("No active offers at the moment."),
+                        ),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: appState.offers.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final offer = appState.offers[index];
+                          return _buildOfferCard(context, offer, appState);
+                        },
+                      ),
+                  ],
                 ),
-            ],
-          ),
-        ),
-      ),
+              ),
+            ),
     );
   }
 
@@ -70,16 +70,19 @@ class OffersScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     // ✅ Handle nullable cover image
-    final imageProvider = (offer.coverImageUrl != null && offer.coverImageUrl!.isNotEmpty)
+    final imageProvider = (offer.coverImageUrl != null &&
+            offer.coverImageUrl!.isNotEmpty)
         ? NetworkImage(offer.coverImageUrl!) as ImageProvider
-        : const AssetImage('assets/images/placeholder_offer.png'); // Ensure you have a placeholder or remove this
+        : const AssetImage(
+            'assets/images/placeholder_offer.png'); // Ensure you have a placeholder or remove this
 
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
+        onTap: () =>
+            appState.navigate(AppScreen.offerDetails, id: offer.id.toString()),
         child: Column(
           children: [
             // Image Banner
@@ -88,7 +91,7 @@ class OffersScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer,
                 borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(16)),
+                    const BorderRadius.vertical(top: Radius.circular(16)),
                 image: DecorationImage(
                   image: imageProvider,
                   fit: BoxFit.cover,
@@ -98,19 +101,19 @@ class OffersScreen extends StatelessWidget {
               alignment: Alignment.topRight,
               child: offer.discount != null // ✅ Check for null
                   ? Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  offer.discount!, // ✅ Force unwrap after check
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              )
+                      margin: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        offer.discount!, // ✅ Force unwrap after check
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    )
                   : null,
             ),
             // Details
@@ -120,7 +123,8 @@ class OffersScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(offer.title,
-                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 18)),
+                      style:
+                          theme.textTheme.titleLarge?.copyWith(fontSize: 18)),
                   const SizedBox(height: 4),
                   // ✅ Use discountLabel as description fallback since 'description' column doesn't exist
                   Text(offer.discountLabel ?? 'Special Bundle',
