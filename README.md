@@ -89,7 +89,7 @@ System-wide audit trail for security and monitoring.
 
 ### Step 1: Clone the Project
 ```bash
-git clone <repository-url>
+git clone https://github.com/shwetajadhav0230-ux/edudoc_app_mdv.git
 cd edudoc_app_mdv
 ```
 
